@@ -1,0 +1,22 @@
+{
+  "title": "PrismaClientInitializationErrorが起きて環境変数を読み込めない",
+  "closed": true,
+  "archived": false,
+  "created_at": "2024-07-23",
+  "comments": [
+    {
+      "author": "iorandd",
+      "created_at": "2024-07-23",
+      "body_markdown": "# エラー概要\n個人開発でPrismaを使っている中で、以下のエラーが発生しました。\n\n```\nPrismaClientInitializationError: error: Environment variable not found: DATABASE_URL.\n  -->  schema.prisma:7\n   |\n 6 |   provider = \"mysql\"\n 7 |   url      = env(\"DATABASE_URL\")\n   |\n```\n\n`.env`は何度確認しても正しく書かれていたため、Prisma周りの設定ミスだと考えました。\n`npx prisma generate`を実行した際、`prisma@5.14.0`と`@prisma/client@5.16.1`のバージョンが一致していないという警告が表示されていたことに気がつきました。\n\n```\nnpx prisma generate\nEnvironment variables loaded from .env\nPrisma schema loaded from backend/prisma/schema.prisma\n\n✔ Generated Prisma Client (v5.16.1) to ./node_modules/@prisma/client in 50ms\n\nwarn Versions of prisma@5.14.0 and @prisma/client@5.16.1 don't match.\nThis might lead to unexpected behavior.\nPlease make sure they have the same version.\n```\n\n# 解決方法\nPrismaとPrisma Clientのバージョンを固定で一致させたところ、エラーは発生しなくなりました。\nチームで開発していると、依存関係のバージョンがバラバラになりやすいことがあります。今回は以下のようなpackage.jsonの記述が原因でバージョンが一致しませんでした。\n```\n  \"dependencies\": {\n    \"@prisma/client\": \"^5.16.1\",\n    \"prisma\": \"^5.12.1\",\n  },\n```\n固定バージョンを利用するなど、チームでコミュニケーションをとって依存関係をケアすることが重要だと感じました。\n\n```\n\"dependencies\": {\n  \"@prisma/client\": \"5.16.1\",\n  \"prisma\": \"5.16.1\"\n}\n```",
+      "body_updated_at": "2024-07-27",
+      "children": [
+        {
+          "author": "iorandd",
+          "created_at": "2024-08-11",
+          "body_markdown": "# 解決方法(2024/8/11 追記)\n上記の設定を行ったにも関わらず、再度エラーが発生しました。\n\n### 環境変数が読み込めていない\n`echo $DATABASE_URL`を打つと何も返ってこない、つまり環境変数が読み込まれていない状態でした。\nそこで、以下をコマンドを打って指定された `./backend/.env` ファイルに書かれた環境変数を一括で読み込み、現在のシェルセッションにエクスポートしました。\n```\nexport $(grep -v '^#' ./backend/.env | xargs)\n```\n\n### Prismaが入れ子の変数を置き換えてくれない\n再度試すと環境変数を読み込むことができるようになりましたが、入れ子の変数が置き換えられずにそのまま読み込まれている状態でした。\n```\necho $DATABASE_URL\nmysql://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}\n```\n\n応急処置として、`.env`の`DATABASE_URL`を変数を使わずにベタ書きすることでnestが起動するようになりました。\n",
+          "body_updated_at": "2024-08-11"
+        }
+      ]
+    }
+  ]
+}
