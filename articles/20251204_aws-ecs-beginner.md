@@ -113,27 +113,17 @@ Service Connectは、各タスクに**Envoyサイドカー**という補助的�
 
 ### Service Discoveryとの違い
 
-Service DiscoveryはDNSベースの名前解決を提供し、VPC内のどこからでも(LambdaやEC2など)ECSタスクにアクセスできます。
+**Service Discovery**はDNSベースの名前解決を提供し、VPC内のどこからでも(Lambda、EC2など)ECSタスクにアクセスできます。
 
-Service ConnectはECSサービス同士の通信に特化しており、Service Connectを有効化したサービス間でのみ利用できます。Envoyサイドカーを使って通信を仲介し、サービス間通信を標準化します。また、リクエスト数やレイテンシなどのメトリクスを自動的にCloudWatch Metricsに収集するため、サービス間通信の可観測性が向上します。
+**Service Connect**はECSサービス同士の通信に特化しており、Envoyサイドカーを使って通信を仲介します。リクエスト数やレイテンシなどのメトリクスを自動的にCloudWatch Metricsに収集するため、サービス間通信の可観測性が向上します。
 
 ### 使い分けの考え方
 
 使い分けは通信する側と通信される側の組み合わせで決まります。
 
-**ECSサービス同士の通信**
-Service Connectを使います。サービス間通信を統一的に扱え、運用が容易になります。
+ECSサービス同士が通信する場合は**Service Connect**を使います。サービス間通信を統一的に扱え、Envoyによる可観測性の向上やトラフィック制御などの恩恵を受けられます。
 
-**ECS以外(LambdaやEC2など)からECSへの通信**
-Service Discoveryを使います。DNSベースの名前解決により、VPC内のどこからでもアクセスできます。
-
-簡単にまとめると、Service ConnectはECSサービス同士の通信に最適化されており、Service DiscoveryはECS以外のクライアントからのアクセスも含めて広く使える、という特徴があります。
-
-迷ったときは、以下の3つの質問で判断できます。
-
-* 通信するのはECSサービス同士？ → **Service Connect**
-* ECS外(Lambda/EC2など)から名前で呼びたい？ → **Service Discovery**
-* ECS内の通信設定を統一したい？ → **Service Connect**
+一方、ECS以外のサービス(LambdaやEC2など)からECSタスクにアクセスする場合は**Service Discovery**を使います。DNSベースの名前解決により、VPC内のどこからでもアクセスできます。
 
 ## 4. Terraformでの定義例
 
