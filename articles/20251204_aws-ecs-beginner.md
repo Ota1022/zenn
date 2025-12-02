@@ -19,7 +19,7 @@ AWS Jr. Champions 2026 を目指すアドカレということで、業務でAma
 
 ECSは「**コンテナ化されたアプリケーションを簡単にデプロイ・管理・スケーリングできる、完全マネージド型のコンテナオーケストレーションサービス**」と説明されるのですが、何をどう管理しているのかイメージしにくいと思います。そこで、まずマイクロサービスアーキテクチャという考え方について振り返ります。
 
-### マイクロサービスアーキテクチャとは
+### 1.1 マイクロサービスアーキテクチャとは
 
 前提として**モノリシックアーキテクチャ**という考え方があります。これは全ての機能を1つの大きなアプリケーションとして開発・デプロイする方法です。個人開発などでアプリを作る際はここから始めることが多いと思います。
 モノリシックアーキテクチャでエンタープライズや複雑な処理の伴うアプリケーションを開発・運用する場合、以下のような課題が生じる可能性があります。
@@ -55,7 +55,7 @@ ECSは「**コンテナ化されたアプリケーションを簡単にデプロ
 * **技術スタックの柔軟性**
 フロントエンドはNext.js、レコメンドサービスは機械学習を使うのでPython、コアなバックエンドサービスはパフォーマンスが重要なのでGo、といったように各サービスで最適な技術を選択できます。
 
-### ECSとマイクロサービスの関係
+### 1.2 ECSとマイクロサービスの関係
 
 マイクロサービスアーキテクチャの考え方を踏まえてECSの話に戻ります。ECSではこれらのサービスをコンテナとして実行・管理します。これにより以下のようなメリットがあります。
 
@@ -67,9 +67,9 @@ ECSは「**コンテナ化されたアプリケーションを簡単にデプロ
 
 なお、AWSのコンテナオーケストレーションサービスとしては他にAmazon EKS (Elastic Kubernetes Service) もあります。これはKubernetesというオープンソースのオーケストレーションツールをマネージドで提供するサービスです。本記事ではECSに焦点を当てますが、ECSは AWS 独自の仕組みでシンプルに使える点が特徴で、EKSはKubernetesの豊富なエコシステムを活用できる点が特徴です。
 
-## 2. ECSの構成要素
+### 1.3 ECSの構成要素
 
-ECSがマイクロサービスを管理するサービスだと理解できたところで、具体的な構成要素を見ていきましょう。
+ECSがマイクロサービスを管理するサービスだとわかったところで、構成要素を見ていきましょう。
 
 * **Cluster(クラスター)**：コンテナを実行する環境全体の論理的な単位です。
 * **Task Definition(タスク定義)**：1つ以上のコンテナをまとめたタスク全体の設計図です。どのコンテナを、どのリソース/ネットワーク/ログ設定で動かすかを指定します。
@@ -79,17 +79,17 @@ ECSがマイクロサービスを管理するサービスだと理解できた�
 ![ECSの構成要素](/images/20251204/ecs-core-component.png)
 *出典: AWS ECS Immersion Day*
 
-## 3. マイクロサービス間通信の課題と解決策
+## 2. マイクロサービス間通信の課題と解決策
 
 マイクロサービスアーキテクチャでは、複数のサービスが互いに通信し合う必要があります。例えば、注文サービスがユーザー管理サービスに認証情報を問い合わせたり、商品管理サービスに在庫を確認したりします。
 
-ここで問題になるのが、**通信先のサービスをどうやって見つけるか**です。
+ここで問題になるのが、**通信先のサービスを見つける方法**です。
 
 通常、サービス間の通信にはIPアドレスとポート番号が必要ですが、ECS上で動くタスクのIPアドレスは固定ではありません。タスクの再起動、スケールアウト・イン、新しいバージョンのデプロイなど、様々な理由でIPアドレスが変わります。
 
 IPアドレスをコードや設定ファイルに直接書き込んでしまうと、タスクが再起動するたびに設定を更新しなければなりません。この問題を解決するためにAWSではいくつか選択肢があるのですが、今回は**Service Connect**と**Service Discovery**に焦点を当てたいと思います。
 
-### Service Connect
+### 2.1 Service Connect
 
 Service Connectは、ECSサービス同士の通信を標準的に扱えるようにするECSの機能です。ポイントは、**Service Connectを有効化したECSサービス同士**でのみ通信できるという点です。LambdaやEC2など他のAWSサービスでは利用できません。
 
@@ -100,16 +100,25 @@ Service Connectは、ECSサービス同士の通信を標準的に扱えるよ�
 
 アプリケーションコンテナは通信先のIPアドレスを知る必要がなく、Service Connectで接続された他のECSサービスにサービス名だけで通信できます。Envoyサイドカーがリクエスト数やレイテンシなどのメトリクスを自動的にCloudWatch Metricsに収集するため、サービス間通信の可観測性が向上します。
 
-### Service Discovery
+### 2.2 Service Discovery
 
 Service Discoveryもサービスを名前で見つけられるようにする機能で、ECS専用ではなくEC2、Lambda、Kubernetes(EKS)、オンプレミスなど様々なリソースでも利用できます。内部的にAWS Cloud MapとRoute 53を組み合わせてDNS名で名前解決できるようにしているのですが、VPC側でDNSによる名前解決が使える設定になっている必要があります。
+
+#### AWS Cloud Map とは
+
+ECS タスク、EC2 インスタンス、Lambda などの場所を登録・管理し、他のサービスがそれらを見つけられるようにする仕組みです。以下の2つの方式でサービス検索を提供します。
+
+* **DNS ベース**: Route 53 のプライベートホストゾーンを使って DNS レコードを自動登録。`my-service.local` のような名前で名前解決できる
+* **API ベース**: Cloud Map の API を直接呼び出してサービスを検索。DNS が使えない環境でも利用可能
+
+ECS の Service Discovery は、Cloud Map の DNS ベース方式を利用しています。タスクが起動すると自動的に Cloud Map に登録され、DNS 名で名前解決できるようになります。タスクが停止すると自動的に登録解除されるため、常に現在稼働中のタスクだけにアクセスできます。
 
 ![Service Discoveryの仕組み](/images/20251204/service-discovery.png)
 *出典: AWS Builders Flash - Web アプリケーションのアーキテクチャ設計パターン*
 
 Service Discoveryを使うことで、タスクのIPアドレスが変わっても同じDNS名でアクセスできます。また、ECS以外のクライアント(同一VPCにいるLambdaやEC2、別の内部システムなど)からもECSタスクにアクセスしやすくなります。
 
-### 使い分けの考え方
+### 2.3 使い分けの考え方
 
 使い分けは通信する側と通信される側の組み合わせで決まります。
 
@@ -117,11 +126,11 @@ ECSサービス同士が通信する場合は**Service Connect**を使います�
 
 一方、ECS以外のサービス(LambdaやEC2など)からECSタスクにアクセスする場合は**Service Discovery**を使います。DNSベースの名前解決により、VPC内のどこからでもアクセスできます。
 
-## 4. Terraformでの定義例
+## 3. Terraformでの定義例
 
 ここからは段階的に Terraform での定義を見ていきます。VPC / Subnet / Security Group / IAM ロールなどの周辺設定は省略し、Service Discovery と Service Connect を有効化する時にどこをどう書き足すかに絞ります。
 
-### 4.1 Task 定義と Service
+### 3.1 Task 定義と Service
 
 まずはシンプルな構成として、**Cluster、Task Definition、Service** を定義します。この構成をベースに、Service Connect や Service Discovery を追加していきます。
 
@@ -174,7 +183,7 @@ resource "aws_ecs_service" "app" {
 }
 ```
 
-### 4.2 Service Connect を追加
+### 3.2 Service Connect を追加する
 
 リトライ・タイムアウト・トラフィック分散・メトリクス収集などをECS で標準化してまとめて扱いたい場合は Service Connect を使います。
 
@@ -264,21 +273,32 @@ resource "aws_ecs_service" "app" {
 }
 ```
 
-上記のコードで注目すべきは、**Service Connect の設定が ECS クラスター・タスク定義・サービスの3箇所に分散している**点です。
+上記のコードの通り、Service Connect の設定は ECS クラスター・タスク定義・サービスの3箇所に分散しています。
 
-- **クラスター**では `namespace` を指定して通信可能な範囲を定義
-- **タスク定義**では `portMappings[].name` でどのポートを公開するかを宣言
-- **サービス**では `service_connect_configuration` で実際の接続設定を行う
+* **クラスター**では `namespace` を指定して通信可能な範囲を定義
+* **タスク定義**では `portMappings[].name` でどのポートを公開するかを宣言
+* **サービス**では `service_connect_configuration` で実際の接続設定を行う
 
-この3層の設定が揃って初めて Service Connect が機能します。特に `portMappings[].name` と `service_connect_configuration.service.port_name` の一致が必須であり、ここが食い違うとサービスが正しく動作しません。
+特に `portMappings[].name` と `service_connect_configuration.service.port_name` の一致が必須で、ここが食い違うとサービスが正しく動作しません。
 
-もう一つ重要なのは、`discovery_name` で指定した名前が **自動的に Cloud Map にも登録される**ことです。つまり Service Connect は内部的に Service Discovery の仕組みを利用しており、その上に Envoy による通信制御を載せた構造になっています。Service Connect を使えば Service Discovery も同時に得られるということです。
+もう一つ重要なのは、`discovery_name` で指定した名前が **自動的に Cloud Map にも登録される**ことです。ただし、この登録は Service Connect 専用の namespace 内で行われるため、**Service Connect を有効化したタスク間でのみ名前解決が可能**です。Lambda や EC2 など、Service Connect を使っていないクライアントからはこの名前でアクセスできません。ECS 以外のサービスからアクセスしたい場合は、別途 Service Discovery の設定が必要になります。
 
-### 4.3 Service Discovery を追加
+#### Envoy の設定について
+
+Service Connect を有効化すると、**Envoy プロキシが自動的にサイドカーコンテナとして追加されます**。Envoy の設定ファイルを自分で書く必要はありません。
+
+* `enabled = true` にするだけで、ECS が各タスクに Envoy コンテナを自動追加
+* `service_connect_configuration` ブロックの内容から、Envoy の設定が自動生成される
+* リトライ・タイムアウト・ヘルスチェックなどのデフォルト設定が適用される
+* アプリケーションコンテナからの通信が自動的に Envoy を経由するようになる
+
+このようにEnvoy の存在を意識せずに使えるのが Service Connect の特徴です。Terraform の `service_connect_configuration` ブロックだけでマイクロサービス間通信の制御ができます。
+
+### 3.3 Service Discovery を追加する
 
 ECS以外のサービス(LambdaやEC2など)からECSタスクにアクセスしたい場合は Service Discovery(Cloud Map + Route 53 による DNS 登録)を使います。
 
-4.1 の基本構成に対して、以下を追加します。
+3.1 の基本構成に対して、以下を追加します。
 
 #### Cloud Map の namespace 作成
 
@@ -337,20 +357,26 @@ resource "aws_ecs_service" "app" {
 }
 ```
 
-
 Service Discovery の構成を見ると、**Cloud Map のnamespace とサービスを定義し、それを ECS サービスの `service_registries` で参照する**という構造になっています。
 
 Service Connect との違いは、Service Connect が Envoy というプロキシを自動で追加してくれるのに対し、Service Discovery は DNS による名前解決のみを提供する点です。そのため Service Discovery は ECS 以外のサービス（LambdaやEC2など）からも利用できる汎用的な仕組みとなっています。
 
-## 5. まとめ
+## 4. まとめ
 
-ECS におけるマイクロサービス間通信の基本として、Service Discovery と Service Connect の 2 つの仕組みを整理しました。業務の中だけではなかなか触れない領域も含めて調べてみたことで、ECS のネットワークまわりの理解が一歩進んだ気がします。
+ECS におけるマイクロサービス間通信の基本として、Service Connect と Service Discovery の 2 つの仕組みを整理しました。
+
+今回は比較する形で紹介してきましたが、あくまでもこれらは**対立する概念ではなく、併用される関係**にあります。
+
+* **ECS サービス間の通信**: Service Connect を使うことで、Envoy による可観測性やトラフィック制御の恩恵を受けられる
+* **ECS 以外からのアクセス**: Lambda や EC2 など ECS 以外のクライアントからアクセスする場合は Service Discovery が必要
+* **両方が必要なケース**: 同じ ECS タスクに対して、ECS サービスからは Service Connect 経由で、Lambda からは Service Discovery 経由でアクセスする、といった併用も可能
 
 ECS のサービス間通信にはこのほか、internal ALB を活用したパターンなども存在します。なおAWS App Mesh は2026年9月30日にサービス終了が予定されており、Service Connect への移行が推奨されています（[Migrating from AWS App Mesh to Amazon ECS Service Connect](https://aws.amazon.com/jp/blogs/containers/migrating-from-aws-app-mesh-to-amazon-ecs-service-connect/)）。
 
-## 6. 参考文献
+今回、業務の中だけではなかなか触れないネットワークまわりの領域も調べたことで、ECS の理解が一歩進んだ気がします。アドカレ以外でもこういったアウトプットは定期的に行いたいですね！
+
+## 5. 参考文献
 
 * [モノリシックアーキテクチャとマイクロサービスアーキテクチャの違い - AWS](https://aws.amazon.com/jp/compare/the-difference-between-monolithic-and-microservices-architecture/)
 * [ECS Immersion Day - Basic](https://catalog.workshops.aws/ecs-immersion-day/en-US/30-basic)
 * [Web アプリケーションのアーキテクチャ設計パターン - AWS Builders Flash](https://aws.amazon.com/jp/builders-flash/202409/web-app-architecture-design-pattern/)
-
