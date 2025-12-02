@@ -9,11 +9,9 @@ published_at: 2025-12-04 00:00
 
 本記事は[若手AWS Leading Engineerを志す者達 Advent Calendar 2025](https://qiita.com/advent-calendar/2025/to-be-japan-aws-jr-champions)の4日目の記事です。
 
-AWS Jr. Champions 2026 を目指すアドカレということもあり、コンテナやアプリケーション開発に馴染みがなくてもわかるように解説できればと思います。
+AWS Jr. Champions 2026 を目指すアドカレということで、自分はコンテナやアプリケーション開発に興味があるのでAmazon Elastic Container Service (ECS) を使ったマイクロサービス環境に触れる中でService Connect と Service Discoveryが何をしていて、どう使い分けるべきか理解するために調べたことをまとめてみました。
 
-普段は[スリーシェイク](https://3-shake.com/)という会社で主にWebアプリケーションのバックエンド開発に従事しています。今回はAmazon Elastic Container Service (ECS) を使ったマイクロサービス環境に触れる中でService Connect と Service Discoveryが何をしていて、どう使い分けるべきか理解するために調べたことをまとめました。
-
-会社の方でも[3-shake Advent Calendar 2025](https://qiita.com/advent-calendar/2025/3-shake)で記事を書くのでよければ見ていってください。
+普段は[スリーシェイク](https://3-shake.com/)という会社でフルスタックエンジニアとしてWebアプリケーション開発に従事しています。会社の方でも[3-shake Advent Calendar 2025](https://qiita.com/advent-calendar/2025/3-shake)で記事を書くのでよければ見ていってください。
 
 ## 1. Amazon ECSについて
 
