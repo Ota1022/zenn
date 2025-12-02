@@ -9,7 +9,7 @@ published_at: 2025-12-04 00:00
 
 本記事は[若手AWS Leading Engineerを志す者達 Advent Calendar 2025](https://qiita.com/advent-calendar/2025/to-be-japan-aws-jr-champions)の4日目の記事です。
 
-AWS Jr. Champions 2026 を目指すアドカレということで、自分はコンテナやアプリケーション開発に興味があるのでAmazon Elastic Container Service (ECS) を使ったマイクロサービス環境に触れる中でService Connect と Service Discoveryが何をしていて、どう使い分けるべきか理解するために調べたことをまとめてみました。
+AWS Jr. Champions 2026 を目指すアドカレということで、業務でAmazon Elastic Container Service (ECS) を使ったマイクロサービス環境に触れる中で、Service Connect と Service Discoveryの違いを理解するために調べたことをまとめました。
 
 普段は[スリーシェイク](https://3-shake.com/)という会社でフルスタックエンジニアとしてWebアプリケーション開発に従事しています。会社の方でも[3-shake Advent Calendar 2025](https://qiita.com/advent-calendar/2025/3-shake)で記事を書くのでよければ見ていってください。
 
@@ -17,7 +17,7 @@ AWS Jr. Champions 2026 を目指すアドカレということで、自分はコ
 
 ![Amazon ECS](/images/20251204/Arch_Amazon-Elastic-Container-Service_64.png)
 
-ECSは「**コンテナ化されたアプリケーションを簡単にデプロイ・管理・スケーリングできる、完全マネージド型のコンテナオーケストレーションサービス**」などと説明されるのですが、これだと何をどう管理しているのかイメージしにくいと思います。そこで、まずマイクロサービスアーキテクチャという考え方について振り返ります。
+ECSは「**コンテナ化されたアプリケーションを簡単にデプロイ・管理・スケーリングできる、完全マネージド型のコンテナオーケストレーションサービス**」と説明されるのですが、何をどう管理しているのかイメージしにくいと思います。そこで、まずマイクロサービスアーキテクチャという考え方について振り返ります。
 
 ### マイクロサービスアーキテクチャとは
 
@@ -41,7 +41,7 @@ ECSは「**コンテナ化されたアプリケーションを簡単にデプロ
 * 注文サービス -> 注文処理や決済(Go)
 * レコメンドサービス -> 商品レコメンデーション(Python + 機械学習)
 
-このように分割すると以下のようなメリットが得られます。
+このように分割すると、以下のようなメリットがあります。
 
 * **独立したスケーリング**
 セール時に注文が急増した時、レコメンドサービスや商品管理サービスに影響を与えずに注文サービスだけをスケールアップできます。
@@ -123,7 +123,7 @@ ECSサービス同士が通信する場合は**Service Connect**を使います�
 
 ### 4.1 Task 定義と Service
 
-まずはシンプルな構成として、**Cluster、Task Definition、Service** を仮定します。
+まずはシンプルな構成として、**Cluster、Task Definition、Service** を定義します。この構成をベースに、Service Connect や Service Discovery を追加していきます。
 
 ```hcl
 # ECS クラスター
@@ -146,11 +146,11 @@ resource "aws_ecs_task_definition" "app" {
   container_definitions = jsonencode([
     {
       name  = "app"               # コンテナの名前
-      image = "nginx:latest"      # 使用するDockerイメージ
+      image = "my-app:latest"     # 使用するDockerイメージ
 
       portMappings = [
         {
-          containerPort = 80      # コンテナ内で待ち受けるポート
+          containerPort = 8080    # コンテナ内で待ち受けるポート
           protocol      = "tcp"
         }
       ]
@@ -176,32 +176,45 @@ resource "aws_ecs_service" "app" {
 
 ### 4.2 Service Connect を追加
 
-リトライ・タイムアウト・トラフィック分散・メトリクス収集などをECS で標準化してまとめて扱いたい場合は Service Connect が便利です。Service Connect を有効化すると、各タスクに **Envoy サイドカー**が追加され、アプリケーションの通信を仲介します。
+リトライ・タイムアウト・トラフィック分散・メトリクス収集などをECS で標準化してまとめて扱いたい場合は Service Connect を使います。
 
-4.1 の基本構成に対して、以下の変更・追加を行います。
+#### Cloud Map の namespace 作成
+
+まず、Service Connect で使用する Cloud Map の namespace を作成します。
+
+**namespace**とは、サービスを管理するための論理的な名前空間です。DNSにおけるゾーンのように複数のサービスを登録できます。例えば "local" というnamespaceを作ると、その中に登録されたサービスは "service-name.local" という形式でアクセスできます。namespaceを分けることで、開発環境・ステージング環境・本番環境などサービスを分離して管理できます。
 
 ```hcl
-# ECS クラスター
-# Service Connect のデフォルト名前空間を設定
-# ここで指定した名前空間内でサービス同士が通信できるようになる
+# Cloud Map
+resource "aws_service_discovery_private_dns_namespace" "main" {
+  name = "local"
+  vpc  = aws_vpc.main.id
+}
+```
+
+#### ECS クラスターの変更
+
+クラスターに Service Connect のデフォルトnamespace を設定します。
+
+```hcl
 resource "aws_ecs_cluster" "main" {
   name = "my-cluster"
 
+  # Service Connect のデフォルトnamespace を追加
   service_connect_defaults {
-    # Cloud Map 名前空間の ARN を指定(ID ではなく ARN なので注意)
+    # Cloud Map namespace の ARN を指定
     namespace = aws_service_discovery_private_dns_namespace.main.arn
   }
 }
+```
 
-# タスク定義
-# Service Connect を使う場合、portMappings に name を付ける必要がある
+#### タスク定義の変更
+
+portMappings に `name` を追加します。この名前は後で Service Connect の設定で使用します。
+
+```hcl
 resource "aws_ecs_task_definition" "app" {
-  family                   = "my-app"
-  network_mode             = "awsvpc"
-  requires_compatibilities = ["FARGATE"]
-  cpu                      = "256"
-  memory                   = "512"
-  execution_role_arn       = aws_iam_role.ecs_execution.arn
+  # 他の設定は同じ
 
   container_definitions = jsonencode([
     {
@@ -210,8 +223,7 @@ resource "aws_ecs_task_definition" "app" {
 
       portMappings = [
         {
-          # 重要: この name が Service Connect 側の port_name と一致する必要がある
-          # これにより、どのポートを Service Connect 経由で公開するかを特定できる
+          # Service Connect 側の port_name と一致させる
           name          = "http"
           containerPort = 8080
           protocol      = "tcp"
@@ -220,21 +232,17 @@ resource "aws_ecs_task_definition" "app" {
     }
   ])
 }
+```
 
-# ECS サービス
-# service_connect_configuration を追加して Service Connect を有効化
+#### ECS サービスの変更
+
+service_connect_configuration ブロックを追加します。
+
+```hcl
 resource "aws_ecs_service" "app" {
-  name            = "my-app-service"
-  cluster         = aws_ecs_cluster.main.id
-  task_definition = aws_ecs_task_definition.app.arn
-  desired_count   = 2
-  launch_type     = "FARGATE"
+  # 他の設定は同じ
 
-  network_configuration {
-    subnets         = ["subnet-xxx", "subnet-yyy"]
-    security_groups = ["sg-zzz"]
-  }
-
+  # Service Connect の設定を追加
   service_connect_configuration {
     enabled = true  # Service Connect を有効化。各タスクに自動で Envoy サイドカーが追加される
 
@@ -268,21 +276,29 @@ resource "aws_ecs_service" "app" {
 
 ### 4.3 Service Discovery を追加
 
-「user-service」「order-service」のようなサービス名で通信したい場合は Service Discovery(Cloud Map + Route 53 による DNS 登録)を使います。
+ECS以外のサービス(LambdaやEC2など)からECSタスクにアクセスしたい場合は Service Discovery(Cloud Map + Route 53 による DNS 登録)を使います。
 
 4.1 の基本構成に対して、以下を追加します。
 
+#### Cloud Map の namespace 作成
+
+Service Connect と同様に namespace を作成しますが、こちらは純粋なDNSゾーンとして機能します。
+
 ```hcl
-# Cloud Map 名前空間
-# DNS のゾーンのようなもの。"my-app.local" の ".local" 部分を定義
-# VPC内のプライベートなDNS名前空間として機能する
+# Cloud Map namespace
+# "my-app.local" の ".local" 部分を定義
 resource "aws_service_discovery_private_dns_namespace" "main" {
   name = "local"
   vpc  = aws_vpc.main.id
 }
+```
 
+#### Cloud Map サービスの作成
+
+Service Connect では不要でしたが、DNS レコードの詳細な設定を行う必要があります。
+
+```hcl
 # Cloud Map の Service
-# DNS レコードの設定を行う。タスクのIPアドレスを自動で登録・削除する
 resource "aws_service_discovery_service" "app" {
   name = "my-app"  # "my-app.local" の "my-app" 部分
 
@@ -290,62 +306,51 @@ resource "aws_service_discovery_service" "app" {
     namespace_id = aws_service_discovery_private_dns_namespace.main.id
 
     dns_records {
-      ttl  = 10    # DNS キャッシュの有効期間(秒)。短めにするとIPの変更に早く追従
-      type = "A"   # IPv4アドレスを登録
+      ttl  = 10
+      type = "A"
     }
 
-    # 複数のIPアドレスを返す(複数タスクに負荷分散)
     routing_policy = "MULTIVALUE"
   }
 
-  # Route 53 のヘルスチェックではなく、ECS の登録状態に基づく簡易ヘルスチェック
-  # failure_threshold = 1 で、1回失敗したら unhealthy とみなす
   health_check_custom_config {
     failure_threshold = 1
   }
 }
+```
 
-# ECS サービス(service_registries を追加)
+#### ECS サービスの変更
+
+Service Connect の `service_connect_configuration` に対し、こちらは `service_registries` という別のブロックを使います。
+
+```hcl
 resource "aws_ecs_service" "app" {
-  name            = "my-app-service"
-  cluster         = aws_ecs_cluster.main.id
-  task_definition = aws_ecs_task_definition.app.arn
-  desired_count   = 2
-  launch_type     = "FARGATE"
+  # 他の設定は同じ
 
-  network_configuration {
-    subnets         = ["subnet-xxx", "subnet-yyy"]
-    security_groups = ["sg-zzz"]
-  }
-
-  # Service Discovery との連携設定
-  # これを追加するだけで、タスクが起動・停止時に自動でCloud Mapに登録・削除される
-  # 結果: "my-app.local" という名前でタスクにアクセスできるようになる
+  # Service Discovery との連携設定を追加
+  # タスクのIPアドレスが自動でDNSに登録される
   service_registries {
     registry_arn   = aws_service_discovery_service.app.arn
-    container_name = "app"  # タスク定義で指定したコンテナ名
-    container_port = 80     # 登録するポート番号
+    container_name = "app"
+    container_port = 8080
   }
 }
 ```
 
-Service Discovery の構成を見ると、**Cloud Map の名前空間とサービスを定義し、それを ECS サービスの `service_registries` で参照する**という2段階の構造になっています。Service Connect と比べると設定箇所が少なくシンプルです。
 
-ここで重要なのは、`routing_policy = "MULTIVALUE"` と `ttl = 10` の組み合わせです。MULTIVALUE ポリシーでは DNS クエリに対して複数のタスクの IP アドレスが全て返されます。つまり、**負荷分散の責任はクライアント側にある**ということです。これは Service Connect の Envoy が自動的に負荷分散してくれるのとは対照的です。
+Service Discovery の構成を見ると、**Cloud Map のnamespace とサービスを定義し、それを ECS サービスの `service_registries` で参照する**という構造になっています。
 
-また、`health_check_custom_config` を使っている点も注目すべきです。これは Route 53 の HTTP/HTTPS ヘルスチェックではなく、**ECS が管理するタスクの状態を直接使う**簡易的な方式です。ECS が「このタスクは起動している」と判断すれば healthy、停止すれば DNS から削除されます。別途ヘルスチェックエンドポイントを用意する必要がなく、ECS のタスク管理に完全に委ねられます。
-
-Service Discovery は Cloud Map + Route 53 という汎用的な仕組みのため、ECS 以外からも利用できます。Service Connect は ECS サービス間専用ですが、Service Discovery は VPC 内のあらゆるリソースが対象です。
+Service Connect との違いは、Service Connect が Envoy というプロキシを自動で追加してくれるのに対し、Service Discovery は DNS による名前解決のみを提供する点です。そのため Service Discovery は ECS 以外のサービス（LambdaやEC2など）からも利用できる汎用的な仕組みとなっています。
 
 ## 5. まとめ
 
 ECS におけるマイクロサービス間通信の基本として、Service Discovery と Service Connect の 2 つの仕組みを整理しました。業務の中だけではなかなか触れない領域も含めて調べてみたことで、ECS のネットワークまわりの理解が一歩進んだ気がします。
 
-ECS のサービス間通信にはこのほか、internal ALB を活用したパターンなども存在します。なおAWS App Mesh は2026年9月30日にサービス終了が予定されており、Service Connect への移行が推奨されています。
+ECS のサービス間通信にはこのほか、internal ALB を活用したパターンなども存在します。なおAWS App Mesh は2026年9月30日にサービス終了が予定されており、Service Connect への移行が推奨されています（[Migrating from AWS App Mesh to Amazon ECS Service Connect](https://aws.amazon.com/jp/blogs/containers/migrating-from-aws-app-mesh-to-amazon-ecs-service-connect/)）。
 
 ## 6. 参考文献
 
 * [モノリシックアーキテクチャとマイクロサービスアーキテクチャの違い - AWS](https://aws.amazon.com/jp/compare/the-difference-between-monolithic-and-microservices-architecture/)
 * [ECS Immersion Day - Basic](https://catalog.workshops.aws/ecs-immersion-day/en-US/30-basic)
 * [Web アプリケーションのアーキテクチャ設計パターン - AWS Builders Flash](https://aws.amazon.com/jp/builders-flash/202409/web-app-architecture-design-pattern/)
-* [Migrating from AWS App Mesh to Amazon ECS Service Connect - AWS Blog](https://aws.amazon.com/jp/blogs/containers/migrating-from-aws-app-mesh-to-amazon-ecs-service-connect/)
+
