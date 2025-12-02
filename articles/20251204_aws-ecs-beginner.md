@@ -18,7 +18,7 @@ AWS Jr. Champions 2026 を目指すアドカレということもあり、コン
 
 ![Amazon ECS](/images/20251204/Arch_Amazon-Elastic-Container-Service_64.png)
 
-ECSは一般的に「**コンテナ化されたアプリケーションを簡単にデプロイ・管理・スケーリングできる、完全マネージド型のコンテナオーケストレーションサービス**」などと説明されるのですが、正直これだと何をどう管理しているのかイメージしにくいと思います。そこで、まずマイクロサービスアーキテクチャという考え方について振り返ります。
+ECSは「**コンテナ化されたアプリケーションを簡単にデプロイ・管理・スケーリングできる、完全マネージド型のコンテナオーケストレーションサービス**」などと説明されるのですが、正直これだと何をどう管理しているのかイメージしにくいと思います。そこで、まずマイクロサービスアーキテクチャという考え方について振り返ります。
 
 ### マイクロサービスアーキテクチャとは
 
@@ -118,11 +118,11 @@ ECSサービス同士が通信する場合は**Service Connect**を使います�
 
 ## 4. Terraformでの定義例
 
-ここからは段階的に Terraform での定義を見ていきます。**VPC / Subnet / Security Group / IAM ロールなどの周辺設定は省略**し、「Service Discovery と Service Connect を有効化する時にどこをどう書き足すか」に絞ります。
+ここからは段階的に Terraform での定義を見ていきます。VPC / Subnet / Security Group / IAM ロールなどの周辺設定は省略し、Service Discovery と Service Connect を有効化する時にどこをどう書き足すかに絞ります。
 
-### 4.1 最小構成 (Task 定義と Service)
+### 4.1 Task 定義と Service
 
-まずは最もシンプルな構成として、**Cluster、Task Definition、Service** を仮定します。
+まずはシンプルな構成として、**Cluster、Task Definition、Service** を仮定します。
 
 ```hcl
 # ECS クラスター
@@ -130,24 +130,26 @@ resource "aws_ecs_cluster" "main" {
   name = "my-cluster"
 }
 
-# タスク定義(どんなコンテナを動かすか)
+# タスク定義
+# 使うイメージ、CPU/メモリ、ポート番号などを定義
 resource "aws_ecs_task_definition" "app" {
-  family                   = "my-app"
-  network_mode             = "awsvpc"
-  requires_compatibilities = ["FARGATE"]
-  cpu                      = "256"
-  memory                   = "512"
+  family                   = "my-app"              # タスク定義の名前(バージョン管理される)
+  network_mode             = "awsvpc"              # VPC内でIPアドレスを持つモード
+  requires_compatibilities = ["FARGATE"]           # サーバーレスで動かす
+  cpu                      = "256"                 # 0.25 vCPU
+  memory                   = "512"                 # 512 MB
 
+  # コンテナを起動・停止するための権限
   execution_role_arn = aws_iam_role.ecs_execution.arn
 
   container_definitions = jsonencode([
     {
-      name  = "app"
-      image = "nginx:latest"
+      name  = "app"               # コンテナの名前
+      image = "nginx:latest"      # 使用するDockerイメージ
 
       portMappings = [
         {
-          containerPort = 80
+          containerPort = 80      # コンテナ内で待ち受けるポート
           protocol      = "tcp"
         }
       ]
@@ -155,55 +157,56 @@ resource "aws_ecs_task_definition" "app" {
   ])
 }
 
-# ECS サービス(タスクを何個維持するか)
+# ECS サービス
+# タスクの数を常に監視し、指定した数を維持する
 resource "aws_ecs_service" "app" {
   name            = "my-app-service"
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.app.arn
-  desired_count   = 2
-  launch_type     = "FARGATE"
+  desired_count   = 2                              # 常に2個のタスクを起動しておく
+  launch_type     = "FARGATE"                      # Fargateで起動
 
   network_configuration {
-    subnets         = ["subnet-xxx", "subnet-yyy"]
-    security_groups = ["sg-zzz"]
+    subnets         = ["subnet-xxx", "subnet-yyy"] # タスクを配置するサブネット
+    security_groups = ["sg-zzz"]                   # タスクに適用するファイアウォールのルール
   }
 }
 ```
-
-IAM ロール / ログ / VPC などの定義は省略しています。
 
 ### 4.2 Service Discovery を追加 (サービス名でアクセス)
 
 「user-service」「order-service」のようなサービス名で通信したい場合は Service Discovery(Cloud Map + Route 53 による DNS 登録)を使います。
 
-追加するのは主に 2 つです。
-
-1. **名前空間(Namespace)**：`service-name.local` の `.local` 部分
-2. **ECS Service の `service_registries`**：この設定により、タスク起動/終了に追従して Cloud Map に登録/解除されます
+4.1 の基本構成に対して、以下を追加します。
 
 ```hcl
-# Cloud Map 名前空間(DNS のゾーンのようなもの)
+# Cloud Map 名前空間
+# DNS のゾーンのようなもの。"my-app.local" の ".local" 部分を定義
+# VPC内のプライベートなDNS名前空間として機能する
 resource "aws_service_discovery_private_dns_namespace" "main" {
   name = "local"
   vpc  = aws_vpc.main.id
 }
 
-# Cloud Map の Service(DNS レコードの設定など)
+# Cloud Map の Service
+# DNS レコードの設定を行う。タスクのIPアドレスを自動で登録・削除する
 resource "aws_service_discovery_service" "app" {
-  name = "my-app"
+  name = "my-app"  # "my-app.local" の "my-app" 部分
 
   dns_config {
     namespace_id = aws_service_discovery_private_dns_namespace.main.id
 
     dns_records {
-      ttl  = 10
-      type = "A"
+      ttl  = 10    # DNS キャッシュの有効期間(秒)。短めにするとIPの変更に早く追従
+      type = "A"   # IPv4アドレスを登録
     }
 
+    # 複数のIPアドレスを返す(複数タスクに負荷分散)
     routing_policy = "MULTIVALUE"
   }
 
   # Route 53 のヘルスチェックではなく、ECS の登録状態に基づく簡易ヘルスチェック
+  # failure_threshold = 1 で、1回失敗したら unhealthy とみなす
   health_check_custom_config {
     failure_threshold = 1
   }
@@ -222,38 +225,40 @@ resource "aws_ecs_service" "app" {
     security_groups = ["sg-zzz"]
   }
 
-  # これを追加するだけで、タスクが Cloud Map に登録され DNS で解決できるようになる
+  # Service Discovery との連携設定
+  # これを追加するだけで、タスクが起動・停止時に自動でCloud Mapに登録・削除される
+  # 結果: "my-app.local" という名前でタスクにアクセスできるようになる
   service_registries {
     registry_arn   = aws_service_discovery_service.app.arn
-    container_name = "app"
-    container_port = 80
+    container_name = "app"  # タスク定義で指定したコンテナ名
+    container_port = 80     # 登録するポート番号
   }
 }
 ```
 
 これで **`my-app.local`** という DNS 名で到達できるようになります(タスクの増減・入れ替えにも追従します)。
 
-### 4.3 Service Connect を追加(ECS サービス間通信を統一)
+### 4.3 Service Connect を追加(ECS サービス間通信を標準化)
 
 リトライ・タイムアウト・トラフィック分散・メトリクス収集などをECS で標準化してまとめて扱いたい場合は Service Connect が便利です。Service Connect を有効化すると、各タスクに **Envoy サイドカー**が追加され、アプリケーションの通信を仲介します。
 
-ここで重要なポイントは 2 つです。
-
-1. **`service_connect_configuration.enabled = true`** で有効化する
-2. **`port_name` の一致**：Task Definition の `portMappings[].name` と ECS Service 側の `service.port_name` を 必ず一致させる
+4.1 の基本構成に対して、以下の変更・追加を行います。
 
 ```hcl
-# クラスターに Service Connect のデフォルト名前空間を設定
-# namespace には Cloud Map 名前空間の "ARN" を指定する
+# ECS クラスター
+# Service Connect のデフォルト名前空間を設定
+# ここで指定した名前空間内でサービス同士が通信できるようになる
 resource "aws_ecs_cluster" "main" {
   name = "my-cluster"
 
   service_connect_defaults {
+    # Cloud Map 名前空間の ARN を指定(ID ではなく ARN なので注意)
     namespace = aws_service_discovery_private_dns_namespace.main.arn
   }
 }
 
-# タスク定義(portMappings に name を追加：これが port_name と一致する必要がある)
+# タスク定義
+# Service Connect を使う場合、portMappings に name を付ける必要がある
 resource "aws_ecs_task_definition" "app" {
   family                   = "my-app"
   network_mode             = "awsvpc"
@@ -269,7 +274,9 @@ resource "aws_ecs_task_definition" "app" {
 
       portMappings = [
         {
-          name          = "http"   #  Service Connect 側の port_name と一致
+          # 重要: この name が Service Connect 側の port_name と一致する必要がある
+          # これにより、どのポートを Service Connect 経由で公開するかを特定できる
+          name          = "http"
           containerPort = 8080
           protocol      = "tcp"
         }
@@ -278,7 +285,8 @@ resource "aws_ecs_task_definition" "app" {
   ])
 }
 
-# ECS サービス(service_connect_configuration を追加)
+# ECS サービス
+# service_connect_configuration を追加して Service Connect を有効化
 resource "aws_ecs_service" "app" {
   name            = "my-app-service"
   cluster         = aws_ecs_cluster.main.id
@@ -292,14 +300,17 @@ resource "aws_ecs_service" "app" {
   }
 
   service_connect_configuration {
-    enabled = true
+    enabled = true  # Service Connect を有効化。各タスクに自動で Envoy サイドカーが追加される
 
-    # この service ブロックが「Service Connect 経由で公開するサービス」を定義する
+    # このサービスを Service Connect 経由で他のサービスから呼び出せるようにする
     service {
-      port_name      = "http"   # Task Definition の portMappings[].name と一致
-      discovery_name = "my-app" # Service Connect 内での登録名(Cloud Map 側に連動)
+      # タスク定義の portMappings[].name と一致させる(必須)
+      port_name      = "http"
+      # Service Connect 内での登録名。Cloud Map にも自動登録される
+      discovery_name = "my-app"
 
-      # 呼び出し側が使う入口(DNS 名とポート)
+      # 他のサービスがこのサービスを呼び出す時に使う名前とポート
+      # 例: 他のサービスから "my-app:8080" でアクセスできる
       client_alias {
         dns_name = "my-app"
         port     = 8080
