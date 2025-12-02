@@ -173,72 +173,7 @@ resource "aws_ecs_service" "app" {
 }
 ```
 
-### 4.2 Service Discovery を追加 (サービス名でアクセス)
-
-「user-service」「order-service」のようなサービス名で通信したい場合は Service Discovery(Cloud Map + Route 53 による DNS 登録)を使います。
-
-4.1 の基本構成に対して、以下を追加します。
-
-```hcl
-# Cloud Map 名前空間
-# DNS のゾーンのようなもの。"my-app.local" の ".local" 部分を定義
-# VPC内のプライベートなDNS名前空間として機能する
-resource "aws_service_discovery_private_dns_namespace" "main" {
-  name = "local"
-  vpc  = aws_vpc.main.id
-}
-
-# Cloud Map の Service
-# DNS レコードの設定を行う。タスクのIPアドレスを自動で登録・削除する
-resource "aws_service_discovery_service" "app" {
-  name = "my-app"  # "my-app.local" の "my-app" 部分
-
-  dns_config {
-    namespace_id = aws_service_discovery_private_dns_namespace.main.id
-
-    dns_records {
-      ttl  = 10    # DNS キャッシュの有効期間(秒)。短めにするとIPの変更に早く追従
-      type = "A"   # IPv4アドレスを登録
-    }
-
-    # 複数のIPアドレスを返す(複数タスクに負荷分散)
-    routing_policy = "MULTIVALUE"
-  }
-
-  # Route 53 のヘルスチェックではなく、ECS の登録状態に基づく簡易ヘルスチェック
-  # failure_threshold = 1 で、1回失敗したら unhealthy とみなす
-  health_check_custom_config {
-    failure_threshold = 1
-  }
-}
-
-# ECS サービス(service_registries を追加)
-resource "aws_ecs_service" "app" {
-  name            = "my-app-service"
-  cluster         = aws_ecs_cluster.main.id
-  task_definition = aws_ecs_task_definition.app.arn
-  desired_count   = 2
-  launch_type     = "FARGATE"
-
-  network_configuration {
-    subnets         = ["subnet-xxx", "subnet-yyy"]
-    security_groups = ["sg-zzz"]
-  }
-
-  # Service Discovery との連携設定
-  # これを追加するだけで、タスクが起動・停止時に自動でCloud Mapに登録・削除される
-  # 結果: "my-app.local" という名前でタスクにアクセスできるようになる
-  service_registries {
-    registry_arn   = aws_service_discovery_service.app.arn
-    container_name = "app"  # タスク定義で指定したコンテナ名
-    container_port = 80     # 登録するポート番号
-  }
-}
-```
-
-これで **`my-app.local`** という DNS 名で到達できるようになります(タスクの増減・入れ替えにも追従します)。
-
-### 4.3 Service Connect を追加(ECS サービス間通信を標準化)
+### 4.2 Service Connect を追加(ECS サービス間通信を標準化)
 
 リトライ・タイムアウト・トラフィック分散・メトリクス収集などをECS で標準化してまとめて扱いたい場合は Service Connect が便利です。Service Connect を有効化すると、各タスクに **Envoy サイドカー**が追加され、アプリケーションの通信を仲介します。
 
@@ -321,6 +256,71 @@ resource "aws_ecs_service" "app" {
 ```
 
 これで、同じ名前空間(例：`local`)に属する Service Connect 対応サービスからは **`my-app:8080`** のように名前で呼べるようになります。また、Envoy が通信を仲介することで、サービス間通信の運用(統一設定・可観測性の向上など)をしやすくなります。
+
+### 4.3 Service Discovery を追加 (サービス名でアクセス)
+
+「user-service」「order-service」のようなサービス名で通信したい場合は Service Discovery(Cloud Map + Route 53 による DNS 登録)を使います。
+
+4.1 の基本構成に対して、以下を追加します。
+
+```hcl
+# Cloud Map 名前空間
+# DNS のゾーンのようなもの。"my-app.local" の ".local" 部分を定義
+# VPC内のプライベートなDNS名前空間として機能する
+resource "aws_service_discovery_private_dns_namespace" "main" {
+  name = "local"
+  vpc  = aws_vpc.main.id
+}
+
+# Cloud Map の Service
+# DNS レコードの設定を行う。タスクのIPアドレスを自動で登録・削除する
+resource "aws_service_discovery_service" "app" {
+  name = "my-app"  # "my-app.local" の "my-app" 部分
+
+  dns_config {
+    namespace_id = aws_service_discovery_private_dns_namespace.main.id
+
+    dns_records {
+      ttl  = 10    # DNS キャッシュの有効期間(秒)。短めにするとIPの変更に早く追従
+      type = "A"   # IPv4アドレスを登録
+    }
+
+    # 複数のIPアドレスを返す(複数タスクに負荷分散)
+    routing_policy = "MULTIVALUE"
+  }
+
+  # Route 53 のヘルスチェックではなく、ECS の登録状態に基づく簡易ヘルスチェック
+  # failure_threshold = 1 で、1回失敗したら unhealthy とみなす
+  health_check_custom_config {
+    failure_threshold = 1
+  }
+}
+
+# ECS サービス(service_registries を追加)
+resource "aws_ecs_service" "app" {
+  name            = "my-app-service"
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.app.arn
+  desired_count   = 2
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    subnets         = ["subnet-xxx", "subnet-yyy"]
+    security_groups = ["sg-zzz"]
+  }
+
+  # Service Discovery との連携設定
+  # これを追加するだけで、タスクが起動・停止時に自動でCloud Mapに登録・削除される
+  # 結果: "my-app.local" という名前でタスクにアクセスできるようになる
+  service_registries {
+    registry_arn   = aws_service_discovery_service.app.arn
+    container_name = "app"  # タスク定義で指定したコンテナ名
+    container_port = 80     # 登録するポート番号
+  }
+}
+```
+
+これで **`my-app.local`** という DNS 名で到達できるようになります(タスクの増減・入れ替えにも追従します)。
 
 ## 5. まとめ
 
