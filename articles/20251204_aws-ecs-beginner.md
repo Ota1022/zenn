@@ -98,7 +98,9 @@ Service Connectは、ECSサービス同士の通信を標準的に扱えるよ�
 ![Service Connectの仕組み](/images/20251204/service-connect.png)
 *出典: AWS Builders Flash - Web アプリケーションのアーキテクチャ設計パターン*
 
-アプリケーションコンテナは通信先のIPアドレスを知る必要がなく、Service Connectで接続された他のECSサービスにサービス名だけで通信できます。Envoyサイドカーがリクエスト数やレイテンシなどのメトリクスを自動的にCloudWatch Metricsに収集するため、サービス間通信の可観測性が向上します。
+アプリケーションコンテナは通信先のIPアドレスを知る必要がなく、Service Connectで接続された他のECSサービスにサービス名だけで通信できます。この際、**通信は必ず自タスク内の Envoy プロキシを経由**します。アプリケーションが短縮名（例: `my-app:8080`）で接続しようとすると、まずタスク内の Envoy がそのリクエストを受け取り、実際の宛先 IP とポートへルーティングする仕組みです。これは VPC の DNS 設定だけで解決される通常の名前解決とは異なります。
+
+Envoyサイドカーがリクエスト数やレイテンシなどのメトリクスを自動的にCloudWatch Metricsに収集するため、サービス間通信の可観測性が向上します。
 
 ただし、**Service Connect の短縮名による接続や可観測性・トラフィック制御といった機能は、Service Connect を設定した ECS タスク間でのみ有効**です。Lambda や EC2 など ECS 外のクライアントから ECS タスクにアクセスさせたい場合は、Service Connect だけでは不十分で、後述する Service Discovery や ALB などの別の接続手段を用意する必要があります。
 
@@ -207,6 +209,8 @@ resource "aws_service_discovery_private_dns_namespace" "sc" {
 }
 ```
 
+**補足**: ここでは `aws_service_discovery_private_dns_namespace` リソースを使っていますが、Service Connect はこの namespace を**論理的なグルーピングとして使用**しており、`sc.local` という名前が Route 53 の通常の DNS レコードとして外部から引けるわけではありません。Service Connect における namespace の種別（private DNS / HTTP など）は、主に Cloud Map の管理上の分類であり、Service Connect の短縮名解決の仕組み自体には直接影響しません。実際の名前解決は Envoy プロキシを通じて Service Connect の仕組み内で行われます。
+
 #### ECS クラスターの変更
 
 クラスターに Service Connect のデフォルトnamespace を設定します。
@@ -281,9 +285,11 @@ resource "aws_ecs_service" "app" {
 
 上記のコードの通り、Service Connect の設定は ECS クラスター・タスク定義・サービスの3箇所に分散しています。
 
-* **クラスター**では `namespace` を指定して通信可能な範囲を定義
+* **クラスター**では `namespace` を指定して、短縮名で到達できる論理的なサービスグループを定義
 * **タスク定義**では `portMappings[].name` でどのポートを公開するかを宣言
 * **サービス**では `service_connect_configuration` で実際の接続設定を行う
+
+なお、**namespace は Service Connect 内での論理的なグルーピングに過ぎず、ネットワーク通信の可否自体は Security Group や NACL などのネットワーク設定で制御されます**。namespace を分けても、セキュリティ境界が自動的に設定されるわけではありません。
 
 特に `portMappings[].name` と `service_connect_configuration.service.port_name` の一致が必須で、ここが食い違うとサービスが正しく動作しません。
 
