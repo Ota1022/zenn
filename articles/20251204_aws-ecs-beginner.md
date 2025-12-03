@@ -85,7 +85,7 @@ ECSがマイクロサービスを管理するサービスだとわかったと�
 
 ここで問題になるのが、**通信先のサービスを見つける方法**です。
 
-通常、サービス間の通信にはIPアドレスとポート番号が必要ですが、ECS上で動くタスクのIPアドレスは固定ではありません。タスクの再起動、スケールアウト・イン、新しいバージョンのデプロイなど、様々な理由でIPアドレスが変わります。
+通常、サービス間の通信にはIPアドレスとポート番号が必要ですが、ECS上で動くタスクのIPアドレスは固定ではありません。タスクの再起動、スケールアウト/イン、新しいバージョンのデプロイなど、様々な理由でIPアドレスが変わります。
 
 IPアドレスをコードや設定ファイルに直接書き込んでしまうと、タスクが再起動するたびに設定を更新しなければなりません。この問題を解決するためにAWSではいくつか選択肢があるのですが、今回は**Service Connect**と**Service Discovery**に焦点を当てたいと思います。
 
@@ -211,7 +211,7 @@ resource "aws_service_discovery_private_dns_namespace" "sc" {
 }
 ```
 
-**補足**: ここでは `aws_service_discovery_private_dns_namespace` リソースを使っていますが、Service Connect はこの namespace を**論理的なグルーピングとして使用**しており、`sc.local` という名前が Route 53 の通常の DNS レコードとして外部から引けるわけではありません。Service Connect における namespace の種別(private DNS / HTTP など)は、主に Cloud Map の管理上の分類であり、Service Connect のタスク内で使う接続名解決の仕組み自体には直接影響しません。実際の名前解決は Envoy プロキシを通じて Service Connect の仕組み内で行われます。
+ここでは `aws_service_discovery_private_dns_namespace` リソースを使っていますが、Service Connect はこの namespace を**論理的なグルーピングとして使用**しており、`sc.local` という名前が Route 53 の通常の DNS レコードとして外部から引けるわけではありません。Service Connect における namespace の種別(private DNS / HTTP など)は、主に Cloud Map の管理上の分類であり、Service Connect のタスク内で使う接続名解決の仕組み自体には直接影響しません。実際の名前解決は Envoy プロキシを通じて Service Connect の仕組み内で行われます。
 
 #### ECS クラスターの変更
 
@@ -275,7 +275,6 @@ resource "aws_ecs_service" "app" {
       discovery_name = "my-app"
 
       # 他のサービスがこのサービスを呼び出す時に使う名前とポート
-      # 例: 他のサービスから "my-app:8080" でアクセスできる
       client_alias {
         dns_name = "my-app"
         port     = 8080
@@ -316,7 +315,7 @@ resource "aws_service_discovery_private_dns_namespace" "sd" {
 }
 ```
 
-**注意**: Service Connect 用と Service Discovery 用の namespace は分けて定義しています。Service Connect が内部で Cloud Map を使用しますが、その管理は ECS が自動で行うため、手動で Service Connect 用の Cloud Map サービス（`aws_service_discovery_service`）を定義する必要はありません。一方、Service Discovery では明示的に DNS レコードの設定を行う必要があります。
+**注意**: Service Connect 用と Service Discovery 用の namespace は分けて定義しています。Service Connect が内部で Cloud Map を使用しますが、その管理は ECS が自動で行うため、手動で Service Connect 用の Cloud Map サービス(`aws_service_discovery_service`)を定義する必要はありません。一方、Service Discovery では明示的に DNS レコードの設定を行う必要があります。
 
 #### Cloud Map サービスの作成
 
@@ -374,7 +373,7 @@ ECS におけるマイクロサービス間通信の基本として、Service Co
 * **ECS 以外からのアクセス**: Lambda や EC2 など ECS 以外のクライアントからアクセスする場合は Service Discovery が必要
 * **両方が必要なケース**: 同じ ECS タスクに対して、ECS サービスからは Service Connect 経由で、Lambda からは Service Discovery 経由でアクセスする、といった併用も可能
 
-ECS のサービス間通信にはこのほか、internal ALB を活用したパターンなども存在します。なおAWS App Mesh は2026年9月30日にサービス終了が予定されており、Service Connect への移行が推奨されています（[Migrating from AWS App Mesh to Amazon ECS Service Connect](https://aws.amazon.com/jp/blogs/containers/migrating-from-aws-app-mesh-to-amazon-ecs-service-connect/)）。
+ECS のサービス間通信にはこのほか、internal ALB を活用したパターンなども存在します。なおAWS App Mesh は2026年9月30日にサービス終了が予定されており、Service Connect への移行が推奨されています([Migrating from AWS App Mesh to Amazon ECS Service Connect](https://aws.amazon.com/jp/blogs/containers/migrating-from-aws-app-mesh-to-amazon-ecs-service-connect/))。
 
 今回、業務の中だけではなかなか触れないネットワークまわりの領域も調べたことで、ECS の理解が一歩進んだ気がします。アドカレ以外でもこういったアウトプットは定期的に行いたいですね！
 
