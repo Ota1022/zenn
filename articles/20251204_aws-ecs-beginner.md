@@ -91,7 +91,7 @@ IPアドレスをコードや設定ファイルに直接書き込んでしまう
 
 ### 2.1 Service Connect
 
-Service Connectは、ECSサービス同士の通信を標準的に扱えるようにするECSの機能です。ポイントは、**Service Connectを有効化したECSサービス同士**でのみ通信できるという点です。LambdaやEC2など他のAWSサービスでは利用できません。
+Service Connectは、ECSサービス同士の通信を標準的に扱えるようにするECSの機能です。**Service Connectを有効化したECSサービス同士**で、短い名前による接続・可観測性の向上・トラフィック制御などの機能を活用できます。
 
 以下の図にある通り、各タスクに**Envoyサイドカー**という補助的なコンテナを自動的に追加することで動作します。Envoyはオープンソースのプロキシロードバランサーで、アプリケーションコンテナからの通信を受け取り、適切な宛先にルーティングする役割を果たしています。
 
@@ -99,6 +99,8 @@ Service Connectは、ECSサービス同士の通信を標準的に扱えるよ�
 *出典: AWS Builders Flash - Web アプリケーションのアーキテクチャ設計パターン*
 
 アプリケーションコンテナは通信先のIPアドレスを知る必要がなく、Service Connectで接続された他のECSサービスにサービス名だけで通信できます。Envoyサイドカーがリクエスト数やレイテンシなどのメトリクスを自動的にCloudWatch Metricsに収集するため、サービス間通信の可観測性が向上します。
+
+ただし、**Service Connect の短縮名による接続や可観測性・トラフィック制御といった機能は、Service Connect を設定した ECS タスク間でのみ有効**です。Lambda や EC2 など ECS 外のクライアントから ECS タスクにアクセスさせたい場合は、Service Connect だけでは不十分で、後述する Service Discovery や ALB などの別の接続手段を用意する必要があります。
 
 ### 2.2 Service Discovery
 
@@ -191,12 +193,16 @@ resource "aws_ecs_service" "app" {
 
 まず、Service Connect で使用する Cloud Map の namespace を作成します。
 
-**namespace**とは、サービスを管理するための論理的な名前空間です。DNSにおけるゾーンのように複数のサービスを登録できます。例えば "local" というnamespaceを作ると、その中に登録されたサービスは "service-name.local" という形式でアクセスできます。namespaceを分けることで、開発環境・ステージング環境・本番環境などサービスを分離して管理できます。
+**namespace**とは、Service Connect が内部で使用するサービスの論理的なグルーピング単位です。開発環境・ステージング環境・本番環境などを分離して管理するために使われます。
+
+Service Connect では、namespace に登録されたサービスは **Service Connect の仕組み内で短い名前（例: `my-app:8080`）による接続が可能**になります。ただし、この接続方式は Service Connect を有効化したECSタスク間で動作するもので、通常の DNS 設定とは異なります。
+
+そのため、**ECS 外のクライアント（Lambda や EC2 など）から Service Connect の短縮名を使って到達することはできません**。ECS 外からアクセスさせたい場合は、後述する Service Discovery や ALB などの別の手段が必要です。
 
 ```hcl
-# Cloud Map
-resource "aws_service_discovery_private_dns_namespace" "main" {
-  name = "local"
+# Cloud Map namespace (Service Connect 用)
+resource "aws_service_discovery_private_dns_namespace" "sc" {
+  name = "sc.local"
   vpc  = aws_vpc.main.id
 }
 ```
@@ -212,7 +218,7 @@ resource "aws_ecs_cluster" "main" {
   # Service Connect のデフォルトnamespace を追加
   service_connect_defaults {
     # Cloud Map namespace の ARN を指定
-    namespace = aws_service_discovery_private_dns_namespace.main.arn
+    namespace = aws_service_discovery_private_dns_namespace.sc.arn
   }
 }
 ```
@@ -302,28 +308,30 @@ ECS以外のサービス(LambdaやEC2など)からECSタスクにアクセスし
 
 #### Cloud Map の namespace 作成
 
-Service Connect と同様に namespace を作成しますが、こちらは純粋なDNSゾーンとして機能します。
+Service Discovery 用に別の namespace を作成します。こちらは Route 53 のプライベートホストゾーンとして DNS レコードが登録される純粋な DNS の仕組みです。
 
 ```hcl
-# Cloud Map namespace
-# "my-app.local" の ".local" 部分を定義
-resource "aws_service_discovery_private_dns_namespace" "main" {
-  name = "local"
+# Cloud Map namespace (Service Discovery 用)
+# "my-app.sd.local" の ".sd.local" 部分を定義
+resource "aws_service_discovery_private_dns_namespace" "sd" {
+  name = "sd.local"
   vpc  = aws_vpc.main.id
 }
 ```
+
+**注意**: Service Connect 用と Service Discovery 用の namespace は分けて定義しています。Service Connect が内部で Cloud Map を使用しますが、その管理は ECS が自動で行うため、手動で Service Connect 用の Cloud Map サービス（`aws_service_discovery_service`）を定義する必要はありません。一方、Service Discovery では明示的に DNS レコードの設定を行う必要があります。
 
 #### Cloud Map サービスの作成
 
 Service Connect では不要でしたが、DNS レコードの詳細な設定を行う必要があります。
 
 ```hcl
-# Cloud Map の Service
+# Cloud Map の Service (Service Discovery 用)
 resource "aws_service_discovery_service" "app" {
-  name = "my-app"  # "my-app.local" の "my-app" 部分
+  name = "my-app"  # "my-app.sd.local" の "my-app" 部分
 
   dns_config {
-    namespace_id = aws_service_discovery_private_dns_namespace.main.id
+    namespace_id = aws_service_discovery_private_dns_namespace.sd.id
 
     dns_records {
       ttl  = 10
