@@ -71,10 +71,10 @@ ECSは「**コンテナ化されたアプリケーションを簡単にデプロ
 
 ECSがマイクロサービスを管理するサービスだとわかったところで、構成要素を見ていきましょう。
 
-* **Cluster(クラスター)**：コンテナを実行する環境全体の論理的な単位です。
-* **Task Definition(タスク定義)**：1つ以上のコンテナをまとめたタスク全体の設計図です。どのコンテナを、どのリソース/ネットワーク/ログ設定で動かすかを指定します。
-* **Task(タスク)**：Task Definition を元に起動される実行単位です。タスク内には複数コンテナを含められます。
-* **Service(サービス)**：継続的に動かし続けたいアプリケーションを管理する単位です。ECSがタスクを指定数維持し、タスクが落ちたら再起動、負荷に応じてスケール、ロードバランサーとの連携などを自動で行います。
+* **クラスター**：コンテナを実行する環境全体の論理的な単位です。
+* **タスク定義**：1つ以上のコンテナをまとめたタスク全体の設計図です。どのコンテナを、どのリソース/ネットワーク/ログ設定で動かすかを指定します。
+* **タスク**：タスク定義を元に起動される実行単位です。タスク内には複数コンテナを含められます。
+* **サービス**：継続的に動かし続けたいアプリケーションを管理する単位です。ECSがタスクを指定数維持し、タスクが落ちたら再起動、負荷に応じてスケール、ロードバランサーとの連携などを自動で行います。
 
 ![ECSの構成要素](/images/20251204/ecs-core-component.png)
 *出典: AWS ECS Immersion Day*
@@ -91,18 +91,18 @@ IPアドレスをコードや設定ファイルに直接書き込んでしまう
 
 ### 2.1 Service Connect
 
-Service Connectは、ECSサービス同士の通信を標準的に扱えるようにするECSの機能です。**Service Connectを有効化したECSサービス同士**で、短い名前による接続・可観測性の向上・トラフィック制御などの機能を活用できます。
+Service Connectは、ECSサービス同士の通信を標準的に扱えるようにするECSの機能です。**Service Connectを有効化したECSサービス同士**で、タスク内で使う接続名(エンドポイント)による接続・可観測性の向上・トラフィック制御などの機能を活用できます。
 
 以下の図にある通り、各タスクに**Envoyサイドカー**という補助的なコンテナを自動的に追加することで動作します。Envoyはオープンソースのプロキシロードバランサーで、アプリケーションコンテナからの通信を受け取り、適切な宛先にルーティングする役割を果たしています。
 
 ![Service Connectの仕組み](/images/20251204/service-connect.png)
 *出典: AWS Builders Flash - Web アプリケーションのアーキテクチャ設計パターン*
 
-アプリケーションコンテナは通信先のIPアドレスを知る必要がなく、Service Connectで接続された他のECSサービスにサービス名だけで通信できます。この際、**通信は必ず自タスク内の Envoy プロキシを経由**します。アプリケーションが短縮名（例: `my-app:8080`）で接続しようとすると、まずタスク内の Envoy がそのリクエストを受け取り、実際の宛先 IP とポートへルーティングする仕組みです。これは VPC の DNS 設定だけで解決される通常の名前解決とは異なります。
+アプリケーションコンテナは通信先のIPアドレスを知る必要がなく、Service Connectで接続された他のECSサービスにサービス名だけで通信できます。この際、**通信は必ず自タスク内の Envoy プロキシを経由**します。アプリケーションがタスク内で使う接続名(例: `my-app:8080`)で接続しようとすると、まずタスク内の Envoy がそのリクエストを受け取り、実際の宛先 IP とポートへルーティングする仕組みです。これは VPC の DNS 設定だけで解決される通常の名前解決とは異なります。
 
 Envoyサイドカーがリクエスト数やレイテンシなどのメトリクスを自動的にCloudWatch Metricsに収集するため、サービス間通信の可観測性が向上します。
 
-ただし、**Service Connect の短縮名による接続や可観測性・トラフィック制御といった機能は、Service Connect を設定した ECS タスク間でのみ有効**です。Lambda や EC2 など ECS 外のクライアントから ECS タスクにアクセスさせたい場合は、Service Connect だけでは不十分で、後述する Service Discovery や ALB などの別の接続手段を用意する必要があります。
+ただし、**Service Connect のタスク内で使う接続名による接続や可観測性・トラフィック制御といった機能は、Service Connect を設定した ECS タスク間でのみ有効**です。Lambda や EC2 など ECS 外のクライアントから ECS タスクにアクセスさせたい場合は、Service Connect だけでは不十分で、後述する Service Discovery や ALB などの別の接続手段を用意する必要があります。
 
 ### 2.2 Service Discovery
 
@@ -130,24 +130,33 @@ ECSサービス同士が通信する場合は**Service Connect**を使います�
 
 一方、ECS以外のサービス(LambdaやEC2など)からECSタスクにアクセスする場合は**Service Discovery**を使います。DNSベースの名前解決により、VPC内のどこからでもアクセスできます。
 
+以下は Service Connect と Service Discovery の主な違いをまとめた表です。
+
+| 項目 | Service Connect | Service Discovery |
+|------|-----------------|-------------------|
+| **使う相手** | ECS タスク間のみ | ECS 内外問わず(Lambda、EC2、ECS など) |
+| **名前解決** | タスク内で設定される接続名(client alias) | Route 53 + DNS による名前解決 |
+| **できること** | 観測・トラフィック制御・リトライなど | 基本的には名前解決のみ |
+| **追加コンテナ** | Envoy サイドカーあり | なし |
+| **ユースケース** | マイクロサービス間の統一的な通信制御 | VPC 内の様々なリソースからの DNS ベースアクセス |
+
 ## 3. Terraformでの定義例
 
-ここからは段階的に Terraform での定義を見ていきます。VPC / Subnet / Security Group / IAM ロールなどの周辺設定は省略し、Service Discovery と Service Connect を有効化する時にどこをどう書き足すかに絞ります。
+ここからは段階的に Terraform での定義を見ていきます。VPC / Subnet / Security Group / IAM ロールなどの周辺設定は省略し、Service Discovery と Service Connect を有効化する時にどこを書き足すかに絞ります。
 
-### 3.1 Task 定義と Service
+### 3.1 タスク定義とサービス
 
-まずはシンプルな構成として、**Cluster、Task Definition、Service** を定義します。この構成をベースに、Service Connect や Service Discovery を追加していきます。
+まずはシンプルな構成として、**クラスター、タスク定義、サービス**を定義します。この構成をベースに、Service Connect や Service Discovery を追加していきます。
 
 ```hcl
-# ECS クラスター
+# クラスター
 resource "aws_ecs_cluster" "main" {
   name = "my-cluster"
 }
 
 # タスク定義
-# 使うイメージ、CPU/メモリ、ポート番号などを定義
 resource "aws_ecs_task_definition" "app" {
-  family                   = "my-app"              # タスク定義の名前(バージョン管理される)
+  family                   = "my-app"              # 定義名(バージョン管理される)
   network_mode             = "awsvpc"              # VPC内でIPアドレスを持つモード
   requires_compatibilities = ["FARGATE"]           # サーバーレスで動かす
   cpu                      = "256"                 # 0.25 vCPU
@@ -171,8 +180,7 @@ resource "aws_ecs_task_definition" "app" {
   ])
 }
 
-# ECS サービス
-# タスクの数を常に監視し、指定した数を維持する
+# サービス
 resource "aws_ecs_service" "app" {
   name            = "my-app-service"
   cluster         = aws_ecs_cluster.main.id
@@ -197,9 +205,9 @@ resource "aws_ecs_service" "app" {
 
 **namespace**とは、Service Connect が内部で使用するサービスの論理的なグルーピング単位です。開発環境・ステージング環境・本番環境などを分離して管理するために使われます。
 
-Service Connect では、namespace に登録されたサービスは **Service Connect の仕組み内で短い名前（例: `my-app:8080`）による接続が可能**になります。ただし、この接続方式は Service Connect を有効化したECSタスク間で動作するもので、通常の DNS 設定とは異なります。
+Service Connect では、namespace に登録されたサービスは **Service Connect の仕組み内でタスク内で使う接続名(例: `my-app:8080`)による接続が可能**になります。ただし、この接続方式は Service Connect を有効化したECSタスク間で動作するもので、通常の DNS 設定とは異なります。
 
-そのため、**ECS 外のクライアント（Lambda や EC2 など）から Service Connect の短縮名を使って到達することはできません**。ECS 外からアクセスさせたい場合は、後述する Service Discovery や ALB などの別の手段が必要です。
+そのため、**ECS 外のクライアント(Lambda や EC2 など)から Service Connect のタスク内で使う接続名を使って到達することはできません**。ECS 外からアクセスさせたい場合は、後述する Service Discovery や ALB などの別の手段が必要です。
 
 ```hcl
 # Cloud Map namespace (Service Connect 用)
@@ -209,7 +217,7 @@ resource "aws_service_discovery_private_dns_namespace" "sc" {
 }
 ```
 
-**補足**: ここでは `aws_service_discovery_private_dns_namespace` リソースを使っていますが、Service Connect はこの namespace を**論理的なグルーピングとして使用**しており、`sc.local` という名前が Route 53 の通常の DNS レコードとして外部から引けるわけではありません。Service Connect における namespace の種別（private DNS / HTTP など）は、主に Cloud Map の管理上の分類であり、Service Connect の短縮名解決の仕組み自体には直接影響しません。実際の名前解決は Envoy プロキシを通じて Service Connect の仕組み内で行われます。
+**補足**: ここでは `aws_service_discovery_private_dns_namespace` リソースを使っていますが、Service Connect はこの namespace を**論理的なグルーピングとして使用**しており、`sc.local` という名前が Route 53 の通常の DNS レコードとして外部から引けるわけではありません。Service Connect における namespace の種別(private DNS / HTTP など)は、主に Cloud Map の管理上の分類であり、Service Connect のタスク内で使う接続名解決の仕組み自体には直接影響しません。実際の名前解決は Envoy プロキシを通じて Service Connect の仕組み内で行われます。
 
 #### ECS クラスターの変更
 
@@ -253,7 +261,7 @@ resource "aws_ecs_task_definition" "app" {
 }
 ```
 
-#### ECS サービスの変更
+#### ECS Serviceの変更
 
 service_connect_configuration ブロックを追加します。
 
@@ -285,7 +293,7 @@ resource "aws_ecs_service" "app" {
 
 上記のコードの通り、Service Connect の設定は ECS クラスター・タスク定義・サービスの3箇所に分散しています。
 
-* **クラスター**では `namespace` を指定して、短縮名で到達できる論理的なサービスグループを定義
+* **クラスター**では `namespace` を指定して、タスク内で使う接続名で到達できる論理的なサービスグループを定義
 * **タスク定義**では `portMappings[].name` でどのポートを公開するかを宣言
 * **サービス**では `service_connect_configuration` で実際の接続設定を行う
 
