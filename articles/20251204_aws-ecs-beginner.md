@@ -201,13 +201,7 @@ resource "aws_ecs_service" "app" {
 
 #### Cloud Map の namespace 作成
 
-まず、Service Connect で使用する Cloud Map の namespace を作成します。
-
-**namespace**とは、Service Connect が内部で使用するサービスの論理的なグルーピング単位です。開発環境・ステージング環境・本番環境などを分離して管理するために使われます。
-
-Service Connect では、namespace に登録されたサービスは **Service Connect の仕組み内でタスク内で使う接続名(例: `my-app:8080`)による接続が可能**になります。ただし、この接続方式は Service Connect を有効化したECSタスク間で動作するもので、通常の DNS 設定とは異なります。
-
-そのため、**ECS 外のクライアント(Lambda や EC2 など)から Service Connect のタスク内で使う接続名を使って到達することはできません**。ECS 外からアクセスさせたい場合は、後述する Service Discovery や ALB などの別の手段が必要です。
+まず、Service Connect で使用する Cloud Map の namespace を作成します。namespace は Service Connect が内部で使用するサービスの論理的なグルーピング単位で、開発環境・ステージング環境・本番環境などを分離して管理するために使われます。
 
 ```hcl
 # Cloud Map namespace (Service Connect 用)
@@ -303,17 +297,6 @@ resource "aws_ecs_service" "app" {
 
 もう一つ重要なのは、`discovery_name` で指定した名前が **自動的に Cloud Map にも登録される**ことです。ただし、この登録は Service Connect 専用の namespace 内で行われるため、**Service Connect を有効化したタスク間でのみ名前解決が可能**です。Lambda や EC2 など、Service Connect を使っていないクライアントからはこの名前でアクセスできません。ECS 以外のサービスからアクセスしたい場合は、別途 Service Discovery の設定が必要になります。
 
-#### Envoy の設定について
-
-Service Connect を有効化すると、**Envoy プロキシが自動的にサイドカーコンテナとして追加されます**。Envoy の設定ファイルを自分で書く必要はありません。
-
-* `enabled = true` にするだけで、ECS が各タスクに Envoy コンテナを自動追加
-* `service_connect_configuration` ブロックの内容から、Envoy の設定が自動生成される
-* リトライ・タイムアウト・ヘルスチェックなどのデフォルト設定が適用される
-* アプリケーションコンテナからの通信が自動的に Envoy を経由するようになる
-
-このようにEnvoy の存在を意識せずに使えるのが Service Connect の特徴です。Terraform の `service_connect_configuration` ブロックだけでマイクロサービス間通信の制御ができます。
-
 ### 3.3 Service Discovery を追加する
 
 ECS以外のサービス(LambdaやEC2など)からECSタスクにアクセスしたい場合は Service Discovery(Cloud Map + Route 53 による DNS 登録)を使います。
@@ -380,8 +363,6 @@ resource "aws_ecs_service" "app" {
 ```
 
 Service Discovery の構成を見ると、**Cloud Map のnamespace とサービスを定義し、それを ECS サービスの `service_registries` で参照する**という構造になっています。
-
-Service Connect との違いは、Service Connect が Envoy というプロキシを自動で追加してくれるのに対し、Service Discovery は DNS による名前解決のみを提供する点です。そのため Service Discovery は ECS 以外のサービス（LambdaやEC2など）からも利用できる汎用的な仕組みとなっています。
 
 ## 4. まとめ
 
