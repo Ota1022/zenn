@@ -68,6 +68,8 @@ published_at: 2025-12-14 00:00
 
 ### 3.1 チーム構成と開発体制
 
+![Fireside Panel の様子](/images/20251214/IMG_9390.jpg)
+
 ここでは、当日のチーム構成・役割分担・開発の進め方 (タスクの切り方やコミュニケーションツールなど) を紹介します。
 
 * 1日で動くものを作るために、最初の1時間で「MVPの境界」を決める
@@ -78,11 +80,9 @@ published_at: 2025-12-14 00:00
 
 Hackathon で作成した Raycast Extension「Trayce」のコンセプトや、どのような課題を解決しようとしたのか、主要な機能と技術スタックの概要を書きます。
 
-![Trayce のデモ](/images/20251214/demo_trayce_full_960.gif)
-
 作成した Extension については、当日発表のために作成したスライドも公開しています。
 
-[https://speakerdeck.com/ota1022/trayce-a-raycast-extension-tokyo-ai-hackathon-2025](https://speakerdeck.com/ota1022/trayce-a-raycast-extension-tokyo-ai-hackathon-2025)
+@[speakerdeck](35cab14e743746aaab971e3628cf7406)
 
 #### Trayce が解決したい課題
 
@@ -117,6 +117,8 @@ Trayce の体験は「ログを取る」ではなく「コピーに意味を付�
 4. 手順として使う項目だけ選び、順序を並べる
 5. 生成オプション（言語など）を選んで、AI に Markdown を作らせる
 6. 生成された Markdown を Notion / Jira などに貼って運用に載せる
+
+![Trayce のデモ](/images/20251214/demo_trayce_full_960.gif)
 
 #### 主要機能（ざっくり）
 
@@ -176,6 +178,8 @@ Hackathon 中に実装したコードの構成も、最低限のレイヤー分�
 * **UIは欲張らない**：Raycast の List / Form を中心に、導線が見える形に限定
 * **ピッチの筋を守る**：機能追加より「誰の何が楽になるか」を崩さない
 
+![最終ピッチの様子](/images/20251214/IMG_9393.jpg)
+
 （ここは当日のメモがあれば、具体例で厚くなる）
 
 ## 4. 10/31 Raycast Meetup Japan
@@ -188,8 +192,6 @@ Hackathon 中に実装したコードの構成も、最低限のレイヤー分�
 
 Raycast CEO の Thomas Paul Mann 氏の Fireside Chat で印象に残ったトピック (プロダクトの方向性、AI との付き合い方、コミュニティの位置づけ など) をメモベースで整理します。
 
-![Fireside Panel の様子](/images/20251214/IMG_9390.jpg)
-
 ### 4.2 Windows 版 Raycast のデモを見て感じたこと
 
 Meetup で披露された Windows 版 Raycast のデモを見て感じたことや、自分の開発スタイルがどう変わりそうかを振り返ります。
@@ -197,8 +199,6 @@ Meetup で披露された Windows 版 Raycast のデモを見て感じたこと�
 ### 4.3 Networking での出会い (台湾コミュニティメンバーとの交流など)
 
 Networking の時間で話した台湾の Raycast コミュニティメンバーとの会話や、他の参加者との情報交換を通して感じたコミュニティの温度感について書きます。
-
-![最終ピッチの様子](/images/20251214/IMG_9393.jpg)
 
 ## 5. イベントを通じて得た学びとこれから
 
@@ -213,4 +213,3 @@ Networking の時間で話した台湾の Raycast コミュニティメンバー
 ### 参考
 
 * Trayce（GitHub）: [https://github.com/Ota1022/trayce](https://github.com/Ota1022/trayce)
-* 発表スライド（Speaker Deck）: [https://speakerdeck.com/ota1022/trayce-a-raycast-extension-tokyo-ai-hackathon-2025](https://speakerdeck.com/ota1022/trayce-a-raycast-extension-tokyo-ai-hackathon-2025)
