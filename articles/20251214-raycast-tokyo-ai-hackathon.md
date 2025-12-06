@@ -1,0 +1,216 @@
+---
+title: "Raycast Community Japan主催Tokyo AI Hackathonに参加した話"
+emoji: "💻"
+type: "idea"
+topics: ["Raycast", "AI", "Hackathon"]
+published: true
+published_at: 2025-12-14 00:00
+---
+
+2025/10/23〜10/31にかけて、Raycast 主催の Tokyo AI Hackathon 周辺イベントに参加し、アイデアソン・ハッカソン・Meetup という3日間連続の「Raycast づくし」な体験をしてきました。
+この記事では、プレイベントでのブレストから実際に Raycast Extension を作るまでの流れや、Meetup での Fireside Chat・コミュニティとの交流を振り返ります。
+
+## 1. 参加したイベントの概要
+
+まずは、10/23 のプレイベント、10/30 の Tokyo AI Hackathon 本番、10/31 の Raycast Meetup Japan という3日間のイベント構成と、それぞれで何をしていたのかをざっくり整理します。
+
+* **10/23（木）プレイベント（アイデアソン）**：参加者同士で課題・アイデアを出し合い、Hackathon 本番のテーマを固める
+* **10/30（木）Hackathon 本番**：1日で Raycast Extension を作り切ってピッチ
+* **10/31（金）Raycast Meetup Japan**：Raycast のロードマップやコミュニティに触れつつ、ネットワーキング
+
+（※この記事は「イベント参加記」なので、実装詳細の深掘りは最小限に。「どんな意図で何を作ったか」を中心に書きます）
+
+## 2. 10/23 TOKYO AI Hackathon プレイベント (アイデアソン)
+
+イベントページ: [https://raycast.connpass.com/event/371015/](https://raycast.connpass.com/event/371015/)
+
+10/23 に開催された TOKYO AI Hackathon プレイベントでは、ハッカソン本番に向けてどんな課題設定・プロダクトアイデアがあり得るかを、参加者同士でブレストしました。
+
+### 2.1 プレイベントの雰囲気と目的
+
+ここでは、会場の雰囲気や当日のタイムライン、主催側から共有された Hackathon の趣旨など、場づくりの部分を振り返ります。
+
+* Raycast を日常的に使っている人もいれば、触り始めたばかりの人もいる
+* 「Raycast × AI」で、日常のちょっとした摩擦を減らす方向のアイデアが多い
+* まずは発散して、最後に本番のチームや方向性へ収束していく流れ
+
+### 2.2 ブレストで出てきたアイデア
+
+このセクションでは、実際にホワイトボードやポストイットに書き出したアイデア群をいくつかピックアップし、「どんな利用シーンを想定していたか」「Raycast と AI をどう組み合わせようとしていたか」を整理します。
+
+（例）
+
+* **AIで“作業の途中経過”を保存して、あとから再利用できるようにする**
+* **リンクやコマンド、コード片などの断片を集めて、ドキュメントにする**
+* **手元の情報（クリップボードや履歴）を軸に、AIに整理させる**
+
+この時点ではまだ荒く、似た方向性のアイデアがいくつも出ていました。
+
+### 2.3 Hackathon 本番で採用した方向性
+
+最終的に Hackathon 本番で実装することにした方向性にどのように絞り込んだのか、その理由や議論の過程をまとめます。
+
+ここで残った問いはシンプルでした。
+
+> 「**作業手順（procedure）**って、誰かに聞かれたときに一番つらいのは
+> “やったことを思い出せない” ことじゃない？」
+
+手順書を書くのは面倒です。しかも、作業が終わった瞬間から記憶は薄れていく。
+でも、作業中にコピーしたコマンドやURLは、だいたいクリップボード履歴に残っている。
+
+そこで僕らは、**「クリップボード履歴を素材に手順書を作る」**という方向性に絞り込みました。
+
+## 3. 10/30 Tokyo AI Hackathon 本番
+
+イベントページ: [https://raycast.connpass.com/event/369928/](https://raycast.connpass.com/event/369928/)
+
+10/30 の本番では、プレイベントで考えたアイデアをもとに、実際に Raycast Extension を 1 日で作り切ることにチャレンジしました。
+
+### 3.1 チーム構成と開発体制
+
+ここでは、当日のチーム構成・役割分担・開発の進め方 (タスクの切り方やコミュニケーションツールなど) を紹介します。
+
+* 1日で動くものを作るために、最初の1時間で「MVPの境界」を決める
+* UIは Raycast の標準コンポーネントに寄せて、迷いを減らす
+* “それっぽい体験”を早めに作って、途中でピッチの筋を崩さない
+
+### 3.2 作成した Raycast Extension「Trayce」
+
+Hackathon で作成した Raycast Extension「Trayce」のコンセプトや、どのような課題を解決しようとしたのか、主要な機能と技術スタックの概要を書きます。
+
+![Trayce のデモ](/images/20251214/demo_trayce_full_960.gif)
+
+作成した Extension については、当日発表のために作成したスライドも公開しています。
+
+[https://speakerdeck.com/ota1022/trayce-a-raycast-extension-tokyo-ai-hackathon-2025](https://speakerdeck.com/ota1022/trayce-a-raycast-extension-tokyo-ai-hackathon-2025)
+
+#### Trayce が解決したい課題
+
+開発や運用の現場で、よくこんな会話が起きます。
+
+* 同僚：「それ、どうやったの？手順教えて」
+* 自分：「えっと……コマンド何打ったっけ……」
+
+**作業中は確かにやれたのに、あとで手順として残せない。**
+この“思い出せない/書けない”のが一番のボトルネックだと感じていました。
+
+#### Trayce のコンセプト
+
+**Trayce は、Raycast 上で “作業手順（procedure）” を自動生成するための拡張機能**です。
+普段あなたがコピーしているコマンドやURL、コード断片などの「クリップボード履歴」を材料にして、必要なところにメモ（意図や補足）を足し、その情報をもとに **Claude（Anthropic）で Markdown の手順書に整形**します。
+
+発想は単純で、
+
+* 手順書が書けないなら、**まず「やったことの痕跡」を確保する**
+* 痕跡として一番自然なのは、クリップボードに残るコマンドやリンク
+* あとから AI に文章化させれば、手順書の初稿は量産できる
+
+という割り切りです。
+
+#### どう動くのか（人間の流れ）
+
+Trayce の体験は「ログを取る」ではなく「コピーに意味を付ける」が中心です。
+
+1. 作業中にコマンドやURLなどをコピーしていく
+2. Raycast で `Create Procedures` を開く
+3. 各コピー項目に **メモ（何のため？なぜ必要？）** を追加する
+4. 手順として使う項目だけ選び、順序を並べる
+5. 生成オプション（言語など）を選んで、AI に Markdown を作らせる
+6. 生成された Markdown を Notion / Jira などに貼って運用に載せる
+
+#### 主要機能（ざっくり）
+
+* **Smart Clipboard Tracking**：クリップボードの内容を取り込み、コマンド/コード/URL/テキストなどに分類
+* **Contextual Notes**：各クリップボード項目にメモを付けて、AI が文脈を誤解しないようにする
+* **AI-Powered Analysis（Claude）**：注釈付きの作業フローを理解して、読みやすい手順に整形
+* **Markdown 出力**：生成結果は Markdown（コピーしてどこへでも貼れる）
+* **Procedure Library**：生成した手順をローカルに保存して見返せる
+
+#### 技術スタック（概要だけ）
+
+* Raycast Extension（UI/コマンド）
+* 生成は Anthropic API（Claude）
+* 手順の保存はローカル（Raycast の LocalStorage）
+
+#### 実装のざっくり構成
+
+Hackathon 中に実装したコードの構成も、最低限のレイヤー分けだけしています。
+
+* **コマンドは2つだけ**
+  * `Create Procedures`：クリップボード＋メモから「手順」を生成するメインコマンド
+  * `My Procedures`：生成済みの手順一覧を開き、Markdown をコピーしたり削除したりするビュー
+* **データモデルをちゃんと切る**
+  * `ClipboardItem`：クリップボードの内容＋タイプ（command / code / url / text など）＋タグや intent（why: のような注釈）
+  * `Note`：人間が書いた「このステップで何をしたか」の説明。必要に応じて `ClipboardItem` への参照を持つ
+  * `Procedure`：Claude が返してくる Markdown と、その元になった `Note` の ID 群
+* **永続化は Raycast の LocalStorage に寄せる**
+  * `Note` と `Procedure` をそれぞれ JSON の配列として保存
+  * 新規作成・更新・削除の関数を `utils/noteStorage.ts` / `utils/procedureStorage.ts` にまとめて、UI 側からは「保存専用の黒箱」として扱う
+* **クリップボードは「履歴っぽく見せる」工夫**
+  * Raycast が提供するクリップボード API は最大 5 件までなので、その範囲で `ClipboardItem` を組み立てる
+  * 中身をざっとパースして、URL / コマンド / コード / JSON / プレーンテキスト をざっくり判定
+  * `#setup` や `#debug` のようなハッシュタグ、`why:` / `purpose:` という文字列から、タグや意図を抽出してメタデータに載せる
+* **Claude への投げ方**
+  * `services/claude.ts` で Anthropic SDK を薄くラップし、`generateProcedure(clipboardHistory, title, apiKey, customInstructions, language)` という 1 関数で呼べるようにする
+  * プロンプトでは、さきほどのタグ/intent/context を全部テキストに展開して「このメタデータを見ながら手順書を組み立ててね」と指示
+  * ユーザーが入力したタイトルは、レスポンス側で必ず最初の `# 見出し` に差し替えるようにして、「タイトルだけ差し替えたくなったとき」にも対応
+* **多言語対応はシンプルに**
+  * 生成前のフォームで「English / 日本語 / その他」を選べるようにし、そのままプロンプトに渡すだけ
+  * ロジック自体は共通で、言語は Claude 側に任せる
+
+1日開発という制約もあり、「凝った状態管理や同期」は捨てて、**データモデル＋LocalStorage＋Anthropic SDK の薄いラッパ**くらいにとどめたのがポイントでした。
+
+#### プライバシー/セキュリティについて
+
+クリップボードはセンシティブなので、前提は明確にしました。
+
+* クリップボードの内容はローカルで取得され、生成のために **直接 Anthropic API に送られる**
+* 生成した手順はローカルに保存される
+* API キーは Raycast の設定に保存される
+
+### 3.3 1 日で作る中での工夫とハマりどころ
+
+短時間で Extension を形にしていく中で工夫した点や、Raycast の API / 開発環境でハマったポイント・デバッグの進め方などをまとめます。
+
+* **「手順生成の芯」だけ先に作る**：分類・並び替え・メモ→Markdown生成、の一本道を最速で通す
+* **UIは欲張らない**：Raycast の List / Form を中心に、導線が見える形に限定
+* **ピッチの筋を守る**：機能追加より「誰の何が楽になるか」を崩さない
+
+（ここは当日のメモがあれば、具体例で厚くなる）
+
+## 4. 10/31 Raycast Meetup Japan
+
+イベントページ: [https://raycast.connpass.com/event/370096/](https://raycast.connpass.com/event/370096/)
+
+10/31 には Raycast Meetup Japan に参加し、ハッカソンとはまた違った形で Raycast のロードマップやコミュニティの雰囲気に触れました。
+
+### 4.1 Thomas Paul Mann 氏との Fireside Chat
+
+Raycast CEO の Thomas Paul Mann 氏の Fireside Chat で印象に残ったトピック (プロダクトの方向性、AI との付き合い方、コミュニティの位置づけ など) をメモベースで整理します。
+
+![Fireside Panel の様子](/images/20251214/IMG_9390.jpg)
+
+### 4.2 Windows 版 Raycast のデモを見て感じたこと
+
+Meetup で披露された Windows 版 Raycast のデモを見て感じたことや、自分の開発スタイルがどう変わりそうかを振り返ります。
+
+### 4.3 Networking での出会い (台湾コミュニティメンバーとの交流など)
+
+Networking の時間で話した台湾の Raycast コミュニティメンバーとの会話や、他の参加者との情報交換を通して感じたコミュニティの温度感について書きます。
+
+![最終ピッチの様子](/images/20251214/IMG_9393.jpg)
+
+## 5. イベントを通じて得た学びとこれから
+
+最後に、3 日間を通して得た学び (アイデアの磨き方、短期間でプロダクトを形にするコツ、コミュニティに関わる意義 など) と、今後 Raycast Extension や AI を使ってどのようなことに取り組んでいきたいかをまとめて締めくくる予定です。
+
+* アイデアは「新しさ」より、**痛みの具体性**で勝負した方が強い
+* 1日開発は、機能を増やすより **“体験の導線”** を一本通すのが最優先
+* コミュニティイベントは、情報収集だけじゃなく **自分の現在地を更新する場** になる
+
+---
+
+### 参考
+
+* Trayce（GitHub）: [https://github.com/Ota1022/trayce](https://github.com/Ota1022/trayce)
+* 発表スライド（Speaker Deck）: [https://speakerdeck.com/ota1022/trayce-a-raycast-extension-tokyo-ai-hackathon-2025](https://speakerdeck.com/ota1022/trayce-a-raycast-extension-tokyo-ai-hackathon-2025)
