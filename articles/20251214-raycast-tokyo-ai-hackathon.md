@@ -1,24 +1,28 @@
 ---
-title: "Raycast Community Japan主催Tokyo AI Hackathonに参加した話"
+title: "Raycast Community Japan主催Tokyo AI Hackathonに参加しました"
 emoji: "💻"
 type: "idea"
-topics: ["Raycast", "AI", "Hackathon"]
+topics: ["Raycast", "Hackathon"]
 published: true
 published_at: 2025-12-14 00:00
 ---
 
-2025/10/23〜10/31にかけて、Raycast 主催の Tokyo AI Hackathon 周辺イベントに参加し、アイデアソン・ハッカソン・Meetup という3日間連続の「Raycast づくし」な体験をしてきました。
-この記事では、プレイベントでのブレストから実際に Raycast Extension を作るまでの流れや、Meetup での Fireside Chat・コミュニティとの交流を振り返ります。
+本記事は[3-shake Advent Calendar 2025](https://qiita.com/advent-calendar/2025/3-shake)の14日目の記事です。
 
-## 1. 参加したイベントの概要
+2025/10/23〜10/31にかけて、Raycast Community Japan 主催のアイデアソン・ハッカソン・Meetup に参加しました。
+すでに1ヶ月以上経ってしまったのですが備忘として、アイデアソンでのブレストから実際に Raycast Extension を作るまでの流れや、Meetup でのコミュニティとの交流を振り返ろうと思います。
 
-まずは、10/23 のプレイベント、10/30 の Tokyo AI Hackathon 本番、10/31 の Raycast Meetup Japan という3日間のイベント構成と、それぞれで何をしていたのかをざっくり整理します。
+## 1. 参加前のRaycast歴
 
-* **10/23（木）プレイベント（アイデアソン）**：参加者同士で課題・アイデアを出し合い、Hackathon 本番のテーマを固める
-* **10/30（木）Hackathon 本番**：1日で Raycast Extension を作り切ってピッチ
-* **10/31（金）Raycast Meetup Japan**：Raycast のロードマップやコミュニティに触れつつ、ネットワーキング
 
-（※この記事は「イベント参加記」なので、実装詳細の深掘りは最小限に。「どんな意図で何を作ったか」を中心に書きます）
+
+## 1. 参加したイベント
+
+今回参加したのは以下の3つのイベントです。
+
+* **10/23（木） アイデアソン_TOKYO AI Hackathon プレイベント**：ハッカソン参加者の有志で解決したい日常的な課題、解決策を出し合う
+* **10/30（木） Tokyo AI Hackathon**：1日で Raycast Extension を作り切ってピッチする
+* **10/31（金） Raycast Meetup Japan #2 with Raycast**：来日していたCEOのThomas達Raycastチームや、ユーザー同士でのネットワーキング
 
 ## 2. 10/23 TOKYO AI Hackathon プレイベント (アイデアソン)
 
@@ -68,7 +72,6 @@ published_at: 2025-12-14 00:00
 
 ### 3.1 チーム構成と開発体制
 
-![Fireside Panel の様子](/images/20251214/IMG_9390.jpg)
 
 ここでは、当日のチーム構成・役割分担・開発の進め方 (タスクの切り方やコミュニケーションツールなど) を紹介します。
 
@@ -117,8 +120,6 @@ Trayce の体験は「ログを取る」ではなく「コピーに意味を付�
 4. 手順として使う項目だけ選び、順序を並べる
 5. 生成オプション（言語など）を選んで、AI に Markdown を作らせる
 6. 生成された Markdown を Notion / Jira などに貼って運用に載せる
-
-![Trayce のデモ](/images/20251214/demo_trayce_full_960.gif)
 
 #### 主要機能（ざっくり）
 
@@ -178,7 +179,6 @@ Hackathon 中に実装したコードの構成も、最低限のレイヤー分�
 * **UIは欲張らない**：Raycast の List / Form を中心に、導線が見える形に限定
 * **ピッチの筋を守る**：機能追加より「誰の何が楽になるか」を崩さない
 
-![最終ピッチの様子](/images/20251214/IMG_9393.jpg)
 
 （ここは当日のメモがあれば、具体例で厚くなる）
 
