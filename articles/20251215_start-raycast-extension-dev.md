@@ -25,19 +25,15 @@ Raycastは macOS / Windows 向けのランチャーアプリです。アプリ�
 
 **1. 自分のワークフローに最適化できる**
 
-既存の Extension が「惜しい」と思ったことはありませんか？機能が多すぎる、逆に足りない、UIが好みじゃない……。自分で作れば、自分だけの最適なツールが手に入ります。社内ツールとの連携や、特殊なユースケースにも対応できます。
+既存の Extension だと機能が多すぎる、逆に足りない、UIが好みじゃない……。自分で作れば、社内ツールとの連携や、特殊なユースケースにも対応できる最強の Extension を Raycast に組み込めます。
 
-**2. 作るハードルが想像以上に低い**
+**2. 作るハードルが低い**
 
-Raycast Extension は **TypeScript + React** で開発します。Raycast が提供する API や UI コンポーネントが非常に充実しており、数十行のコードで実用的な Extension が作れます。本記事で紹介する ToDo リストも、コア部分は200行程度です。
+Raycast Extension は **TypeScript + React** で開発します。Raycast が提供する API や UI コンポーネントが非常に充実しており、ちょっとしたコードの組み合わせで実用的な Extension が作れます。Vibe Coding であればサクッと作れます。
 
-**3. Store公開で他のユーザーにも貢献できる**
+**3. Store公開で他のユーザーにも使ってもらえる**
 
-作った Extension は Raycast Store に公開できます。PR ベースのレビュープロセスを経て、世界中の Raycast ユーザーに届けられます。自分が欲しかった機能は、きっと他の誰かも欲しがっているはずです。
-
-**4. 開発体験が良い**
-
-`npm run dev` でホットリロードが効き、変更が即座に反映されます。型定義も充実しており、エディタの補完が効くのでストレスフリーに開発できます。
+作った Extension は Raycast Store に公開できます。PR レビューを経て、世界中の Raycast ユーザーに届けられます。自分が欲しかった機能は、きっと他の誰かも欲しがっているはずですし、OSS開発のような感じで他のユーザーが作った Extension にも Contribute できます。
 
 ---
 
@@ -47,7 +43,7 @@ Raycast Extension は **TypeScript + React** で開発します。Raycast が提
 
 ### 題材
 
-ありふれた ToDoリスト の Extension を想定します。
+ありふれた ToDoリスト を想定します。
 既にStoreにもありそうな題材ですが競合する気はないので、練習用に捉えていただければ🙏
 
 ### 機能
@@ -521,14 +517,11 @@ npm run lint
 npm run publish
 ```
 
-このコマンドを実行すると：
+このコマンドを実行すると GitHub で認証後、`raycast/extensions` リポジトリに Pull Request が自動作成されます。
 
-1. GitHub で認証（初回のみ）
-2. `raycast/extensions` リポジトリに Pull Request が自動作成される
+### 7.4 自動チェック
 
-### 7.4 自動チェック（CI）
-
-PR が作成されると、GitHub Actions による自動チェックが走ります。
+PR が作成されると、GitHub Actions による CI が走ります。
 
 | チェック項目 | 内容 |
 |-------------|------|
@@ -551,9 +544,21 @@ PR 作成時にチェックリストが表示されます。すべて確認し�
 - [ ] `assets` フォルダのファイルが Extension 自体で使われていることを確認した
 - [ ] README で使う画像は `metadata` フォルダの外に配置した
 
-### 7.6 人間のレビュアーからの指摘
+### 7.6 自動レビューの指摘例（Greptile）
 
-自動チェックを通過しても、Raycast チームメンバーが実際に Extension をテストしてフィードバックをくれます。よくある指摘は以下の通りです。
+AI レビューボットからの指摘例~~私が以前受けた指摘~~です。
+
+| 指摘内容 | 対応方法 |
+|---------|---------|
+| 日本語テキストが含まれている | Raycast Extension は **US English のみ** |
+| 開発用スクリプトが含まれている | `scripts/` 内の開発用ファイルは削除 |
+| 未使用の依存がある | `package.json` から不要な依存を削除 |
+| eslint 設定が古い | `.eslintrc.js` → `eslint.config.js` 形式に移行 |
+| 存在しないファイルを参照している | パスを修正するか、不要なコードを削除 |
+
+### 7.7 レビュアーからの指摘
+
+自動チェックを通過したら、Raycast チームメンバーが実際に Extension をテストしてフィードバックをくれます。よくある~~私が以前受けた~~指摘は以下の通りです。
 
 | 指摘内容 | 対応方法 |
 |---------|---------|
@@ -564,19 +569,8 @@ PR 作成時にチェックリストが表示されます。すべて確認し�
 | スクリーンキャストを見せてほしい | 動作フローを録画して共有（レビュアーが動作確認しやすくなる） |
 | 型定義が重複している | 同じインターフェースが複数ファイルにある場合は共通化 |
 
-レビュアーは実際に Extension をインストールしてテストするので、**動作するかどうか**だけでなく **UX が良いかどうか**もチェックされます。
+レビュアーは実際に Extension をインストールしてテストするので、動作するかだけでなく UX が良いかどうかもチェックされます。準備がやや大変なので心が折れそうになりますが、ここまで来たらレビュー通過まであと少しなので頑張りましょう！
 
-### 7.7 よくある自動レビュー指摘（Greptile）
-
-AI レビューボットからの指摘例です。
-
-| 指摘内容 | 対応方法 |
-|---------|---------|
-| 日本語テキストが含まれている | Raycast Extension は **US English のみ** |
-| 開発用スクリプトが含まれている | `scripts/` 内の開発用ファイルは削除 |
-| 未使用の依存がある | `package.json` から不要な依存を削除 |
-| eslint 設定が古い | `.eslintrc.js` → `eslint.config.js` 形式に移行 |
-| 存在しないファイルを参照している | パスを修正するか、不要なコードを削除 |
 
 ### 7.8 マージと公開
 
@@ -588,15 +582,14 @@ AI レビューボットからの指摘例です。
 
 ## 8. 既存 Extension への Contribute
 
-「自分の Extension を公開する」以外に、**既存の人気 Extension に貢献する**という選択肢もあります。
-
-### 8.1 なぜ既存 Extension への貢献が効果的か
+自分の Extension を公開する以外に、既存の人気 Extension に貢献するという選択肢もあります。
+以下がモチベーションになるのではないでしょうか。
 
 * 既にユーザーが多いので、小さな改善でも多くの人に届く
 * コードレビューを通じて Raycast Extension 開発のベストプラクティスを学べる
 * OSS 貢献の実績になる
 
-### 8.2 Contribute 先としておすすめの Extension
+### 8.1 Contribute 先としておすすめの Extension
 
 ダウンロード数の多い人気 Extension は改善の余地も見つけやすいです。
 
@@ -613,71 +606,16 @@ AI レビューボットからの指摘例です。
 
 全 Extension は [raycast/extensions](https://github.com/raycast/extensions) リポジトリで管理されています。
 
-### 8.3 Contribute の手順
-
-#### 1. Fork Extension
+### 8.2 Contribute の手順
 
 Raycast を開き、貢献したい Extension のページで `Fork Extension` アクションを実行します。GitHub アカウントに fork が作成されます。
-
-#### 2. ローカルにクローン
-
-```bash
-git clone --single-branch --branch ext/<extension-name> --filter=blob:none --sparse git@github.com:<your-github-username>/extensions.git
-cd extensions
-git sparse-checkout init --cone
-git sparse-checkout set extensions/<extension-name>
-```
-
-> `<extension-name>` と `<your-github-username>` は適宜置き換えてください。
-
-#### 3. 依存インストールと開発開始
-
-```bash
-cd extensions/<extension-name>
-npm install
-npm run dev
-```
-
-これで既存 Extension をローカルで動かせます。
-
-#### 4. 変更を加える
-
-* バグ修正、機能追加、UX 改善などを実装
-* `CHANGELOG.md` に変更内容を追記（なければ作成）
-
-```markdown
-## [Unreleased] - {PR_MERGE_DATE}
-
-- Fixed: 〇〇のバグを修正
-```
-
-#### 5. Pull Request を作成
-
-```bash
-git add .
-git commit -m "Fix: 〇〇を修正"
-git push origin ext/<extension-name>
-```
-
-GitHub で `Compare & pull request` をクリックして PR を作成します。
+あとは変更を加えて GitHub で PR を作成します。
 
 ---
 
 ## 9. まとめ
 
 本記事では、Raycast Extension の開発から Store 公開までの流れを ToDo リストを題材に解説しました。
-
-### Extension 開発の魅力
-
-- **低い学習コスト**：TypeScript + React の知識があれば、Raycast の API ドキュメントを見ながらすぐに作り始められます
-- **充実した開発体験**：ホットリロード、型補完、豊富な UI コンポーネントが揃っています
-- **コミュニティとの繋がり**：Store 公開や既存 Extension への Contribute を通じて、世界中の Raycast ユーザーと繋がれます
-
-### 次のステップ
-
-- **API 連携**：外部サービスの API を叩いて、より実用的な Extension を作ってみましょう
-- **OAuth 認証**：Raycast の OAuth API を使えば、認証が必要なサービスとも連携できます
-- **コミュニティ参加**：[Raycast Slack](https://raycast.com/community) や [Raycast Community Japan](https://raycast-community-japan.github.io/) で情報交換してみてください
 
 ぜひ自分だけの Extension を作って、日々のワークフローを加速させてください！🚀
 
@@ -686,4 +624,3 @@ GitHub で `Compare & pull request` をクリックして PR を作成します�
 ## 参考
 
 * Raycast Developers Docs（Create your first extension / Manifest / Storage / Publish / Contribute）
-* （実例）Trayce: [https://github.com/Ota1022/trayce](https://github.com/Ota1022/trayce)
