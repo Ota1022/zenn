@@ -9,19 +9,23 @@ published_at: 2025-12-14 00:00
 
 本記事は [3-shake Advent Calendar 2025](https://qiita.com/advent-calendar/2025/3-shake) 14日目の記事です。
 
-[Raycast Advent Calendar 2025](https://qiita.com/advent-calendar/2025/raycast) でも2025年10月下旬に行われたRaycast Community Japan 主催イベントに3連続で参加した話を書きます。Raycast Extension開発やコミュニティに興味を持ったきっかけとなったイベントなので、よければ読んでみてください。
+[Raycast Advent Calendar 2025](https://qiita.com/advent-calendar/2025/raycast) でも2025年10月下旬に行われたRaycast Community Japan 主催イベントに3連続で参加した話を書きます。Raycast Extension開発やコミュニティに興味を持ったきっかけとなったイベントなので、よければ読んでください。
 
 この記事ではRaycast Extension をローカルで作ってStoreに出すまでの手順を解説します。
 
-## 1. なぜExtensionを作るべきか
+## 1. Extensionを作るべき理由
 
 ### Raycastとは
 
-Raycastは macOS / Windows 向けのランチャーアプリです。アプリの起動やファイル検索はもちろん、クリップボード履歴、ウィンドウ管理、スニペットなど、日常的な作業を高速化する機能が揃っています。
+![Raycast](/images/20251214/2025-12-14-3.03.02.png)
 
-そして Raycast の真骨頂は **Extension（拡張機能）** にあります。Store には 2,000 以上の Extension が公開されており、GitHub、Notion、Slack、AWS など、様々なサービスと連携できます。
+[Raycast](https://www.raycast.com/) は macOS / Windows 向けのランチャーアプリです。アプリの起動やファイル検索はもちろん、クリップボード履歴、ウィンドウ管理、スニペットなど、日常的な作業を高速化する機能が揃っています。
 
-### なぜ自分でExtensionを作るのか
+Raycast の真骨頂は **Extension（拡張機能）** にあります。Store には 2,000 以上の Extension が公開されており、GitHub、Notion、Slack、AWS など、様々なサービスと連携できます。
+
+### Extension作成のメリット
+
+Store には沢山のExtension が公開されていますが、自分で作る価値は十分にあります。
 
 **1. 自分のワークフローに最適化できる**
 
@@ -37,7 +41,7 @@ Raycast Extension は **TypeScript + React** で開発します。Raycast が提
 
 ---
 
-それでは、実際に Extension を作っていきましょう！
+実際に Extension を作って、その手軽さを体感していきましょう！
 
 ## 2. 作るもの
 
@@ -71,8 +75,6 @@ Raycast Extension は **TypeScript + React** で開発します。Raycast が提
 ```bash
 mkdir -p ~/Documents/raycast-extension-dev
 ```
-
----
 
 ## 4. Raycast から Extension の雛形を作る
 
@@ -204,8 +206,6 @@ export async function clearTodos(): Promise<void> {
 
 `LocalStorage.getItem` / `setItem` で JSON 文字列として保存・取得しています。Todo の ID は `randomUUID()` で一意に生成します。各関数は `async` なので、UI 側からは `await` で呼び出します。
 
----
-
 ### 5.2 `src/add-todo.tsx`（Add Todo コマンド）
 
 フォーム入力で Todo を追加するコマンドです。Raycast API が提供する `Form` コンポーネントを使って、ユーザー入力を受け付ける UI を構築します。
@@ -256,8 +256,6 @@ export default function AddTodoCommand() {
 
 Raycast API が提供する `Form` と `Form.TextField` コンポーネントでテキスト入力フォームを作成し、`ActionPanel` と `Action.SubmitForm` で送信ボタンを配置しています。
 また、`showToast` で成功/失敗のフィードバックをユーザーに伝え、`popToRoot` で Root Search に戻ることで連続して Todo を追加しやすくしています。
-
----
 
 ### 5.3 `src/todos.tsx`（Todos コマンド）
 
@@ -462,8 +460,6 @@ export default function TodosCommand() {
 
 `name` は `src/<name>.tsx` に対応するというところがポイントです。
 
----
-
 ## 6. 動作確認
 
 `npm run dev` が動いている状態で、
@@ -473,7 +469,7 @@ export default function TodosCommand() {
 3. `Todos` を実行して一覧が出る
 4. Action で Done/Open を切り替えられる
 
-これで完成です 🎉
+これで完成です 🎉🎉🎉
 
 ![Add Todo](/images/20251214/2025-12-13-2.32.06.png)
 
@@ -529,7 +525,7 @@ PR が作成されると、GitHub Actions による CI が走ります。
 | **Lint** | `npm run lint` でコードスタイルに問題がないか |
 | **Dependencies** | `package-lock.json` が含まれているか、不要な依存がないか |
 
-また、**Greptile** という AI レビューボットが自動でコードをチェックし、以下のような指摘をコメントします。
+**Greptile** という AI レビューボットが自動でコードをチェックし、以下のような指摘をコメントします。
 
 * **style**: コードスタイルの問題（古い設定形式、型の安全性など）
 * **logic**: ロジックの問題（存在しないファイルの参照、未宣言の依存など）
@@ -546,7 +542,7 @@ PR 作成時にチェックリストが表示されます。すべて確認し�
 
 ### 7.6 自動レビューの指摘例（Greptile）
 
-AI レビューボットからの指摘例~~私が以前受けた指摘~~です。
+AI レビューボットからの指摘例 ~~私が過去に受けた指摘~~ です。
 
 | 指摘内容 | 対応方法 |
 |---------|---------|
@@ -558,7 +554,7 @@ AI レビューボットからの指摘例~~私が以前受けた指摘~~です�
 
 ### 7.7 レビュアーからの指摘
 
-自動チェックを通過したら、Raycast チームメンバーが実際に Extension をテストしてフィードバックをくれます。よくある~~私が以前受けた~~指摘は以下の通りです。
+自動チェックを通過したら、Raycast チームメンバーが実際に Extension をテストしてフィードバックをくれます。よくある ~~私が以前受けた~~ 指摘は以下の通りです。
 
 | 指摘内容 | 対応方法 |
 |---------|---------|
@@ -583,39 +579,36 @@ AI レビューボットからの指摘例~~私が以前受けた指摘~~です�
 ## 8. 既存 Extension への Contribute
 
 自分の Extension を公開する以外に、既存の人気 Extension に貢献するという選択肢もあります。
-以下がモチベーションになるのではないでしょうか。
+
+Contribute する主なメリットは以下の通りです。
 
 * 既にユーザーが多いので、小さな改善でも多くの人に届く
 * コードレビューを通じて Raycast Extension 開発のベストプラクティスを学べる
 * OSS 貢献の実績になる
 
-### 8.1 Contribute 先としておすすめの Extension
+### Contribute の手順
 
-ダウンロード数の多い人気 Extension は改善の余地も見つけやすいです。
+全 Extension は [raycast/extensions](https://github.com/raycast/extensions) リポジトリで管理されています。進行中の PR は [Pull Requests](https://github.com/raycast/extensions/pulls) で確認できます。
 
-| Extension | 概要 |
-|-----------|------|
-| [Kill Process](https://www.raycast.com/rolandleth/kill-process) | CPU/メモリ使用量順でプロセスを終了 |
-| [Color Picker](https://www.raycast.com/thomas/color-picker) | Mac 全体から色を取得・管理 |
-| [Google Translate](https://www.raycast.com/gebeto/translate) | Google 翻訳で素早く翻訳 |
-| [Spotify Player](https://www.raycast.com/mattisssa/spotify-player) | Spotify の再生コントロール |
-| [Visual Studio Code](https://www.raycast.com/thomas/visual-studio-code) | VS Code のプロジェクト・ファイルを検索 |
-| [Linear](https://www.raycast.com/linear/linear) | Linear の Issue 作成・検索 |
-| [Slack](https://www.raycast.com/mommertf/slack) | Slack のチャット検索・ステータス変更 |
-| [Notion](https://www.raycast.com/notion/notion) | Notion ページの検索・作成 |
+Raycast には Fork Extension というアクションがあり、これを使うと Contribute の準備が進みます。
 
-全 Extension は [raycast/extensions](https://github.com/raycast/extensions) リポジトリで管理されています。
+1. Raycast のルート検索（⌘ + Space）で Fork Extension を実行し、対象の Extension を選ぶ
 
-### 8.2 Contribute の手順
+2. GitHub 上に fork が作成される
 
-Raycast を開き、貢献したい Extension のページで `Fork Extension` アクションを実行します。GitHub アカウントに fork が作成されます。
-あとは変更を加えて GitHub で PR を作成します。
+3. ローカルにコードを取り込み、修正する
+
+4. 変更をコミットして GitHub に push
+
+5. raycast/extensions へ Pull Request（PR）を作成して提出
+
+OSS の定石ですが、まずは typo 修正・文言改善・エラーハンドリング みたいな小さな改善からスタートするのがおすすめです！
 
 ---
 
 ## 9. まとめ
 
-本記事では、Raycast Extension の開発から Store 公開までの流れを ToDo リストを題材に解説しました。
+本記事では、Raycast Extension の開発から Store 公開までの流れをToDo リストを題材に解説しました。
 
 ぜひ自分だけの Extension を作って、日々のワークフローを加速させてください！🚀
 
@@ -623,4 +616,20 @@ Raycast を開き、貢献したい Extension のページで `Fork Extension` �
 
 ## 参考
 
-* Raycast Developers Docs（Create your first extension / Manifest / Storage / Publish / Contribute）
+Raycast Developers Docs（公式）
+
+* Create your first extension
+
+  * [https://developers.raycast.com/basics/create-your-first-extension](https://developers.raycast.com/basics/create-your-first-extension)
+* Manifest
+
+  * [https://developers.raycast.com/information/manifest](https://developers.raycast.com/information/manifest)
+* Storage
+
+  * [https://developers.raycast.com/api-reference/storage](https://developers.raycast.com/api-reference/storage)
+* Publish an extension
+
+  * [https://developers.raycast.com/basics/publish-an-extension](https://developers.raycast.com/basics/publish-an-extension)
+* Contribute to an extension
+
+  * [https://developers.raycast.com/basics/contribute-to-an-extension](https://developers.raycast.com/basics/contribute-to-an-extension)
