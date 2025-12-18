@@ -10,21 +10,27 @@ published_at: 2025-12-14 00:00
 本記事は[3-shake Advent Calendar 2025](https://qiita.com/advent-calendar/2025/3-shake)の14日目の記事です。
 
 2025/10/23〜10/31にかけて、Raycast Community Japan 主催のアイデアソン・ハッカソン・Meetup に参加しました。
-すでに1ヶ月以上経ってしまったのですが備忘として、アイデアソンでのブレストから実際に Raycast Extension を作るまでの流れや、Meetup でのコミュニティとの交流を振り返ろうと思います。
+すでに2ヶ月近く経ってしまったのですが備忘録として、アイデアソンでのブレストから実際に Raycast Extension を作るまでの流れや、Meetup でのコミュニティとの交流を振り返ろうと思います。
 
-## 1. 参加前のRaycast歴
+## 1. 参加前の Raycast の使い方
 
+私は年初に転職したのですが、新しくセットアップしたPCにクリップボード系のアプリを入れようとしていたところ、Raycast がアツくて他の作業効率化機能も充実しているということを times で見かけてインストールしました。
 
+インストールしたものの、やはり使うのは Clipboard History 一辺倒で、なかなか他の標準機能や Extension を活用するには至れていませんでした。
+
+半年以上が経ったある日、Raycast・Anthropic・Vercel・Supabase がコラボしてハッカソンを開催するという情報を X で見かけました。
+
+私はConnpass で良く色んなテックイベントに参加しているのですが、見たことない座組でかなりビックリするとともに、ハッカソンを通じていまいち活用できていない Raycast に造詣を深める機会だと感じたので、別にソロでもいいなと思いながら参加登録しました。
 
 ## 1. 参加したイベント
 
-今回参加したのは以下の3つのイベントです。
+ハッカソンの前後にも Raycast Community Japan 主催でイベントが予定されており、せっかくなので業務調整をして 3 つとも参加することにしました。
 
-* **10/23（木） アイデアソン_TOKYO AI Hackathon プレイベント**：ハッカソン参加者の有志で解決したい日常的な課題、解決策を出し合う
-* **10/30（木） Tokyo AI Hackathon**：1日で Raycast Extension を作り切ってピッチする
-* **10/31（金） Raycast Meetup Japan #2 with Raycast**：来日していたCEOのThomas達Raycastチームや、ユーザー同士でのネットワーキング
+* **10/23（木） アイデアソン_TOKYO AI Hackathon プレイベント**：ハッカソン参加者の有志で解決したい日常的な課題、解決策を出し合う。いわゆるアイデアソンというより発散・共有がメイン
+* **10/30（木） Tokyo AI Hackathon**：Claude Code を駆使して1日で Raycast Extension を作成して、ピッチする
+* **10/31（金） Raycast Meetup Japan #2 with Raycast**：来日していた CEO の Thomas 達  Raycast チームや、ユーザー同士でのネットワーキング
 
-## 2. 10/23 TOKYO AI Hackathon プレイベント (アイデアソン)
+## 2. 10/23 アイデアソン_TOKYO AI Hackathon プレイベント
 
 イベントページ: [https://raycast.connpass.com/event/371015/](https://raycast.connpass.com/event/371015/)
 
@@ -64,7 +70,7 @@ published_at: 2025-12-14 00:00
 
 そこで僕らは、**「クリップボード履歴を素材に手順書を作る」**という方向性に絞り込みました。
 
-## 3. 10/30 Tokyo AI Hackathon 本番
+## 3. 10/30 Tokyo AI Hackathon
 
 イベントページ: [https://raycast.connpass.com/event/369928/](https://raycast.connpass.com/event/369928/)
 
@@ -179,10 +185,7 @@ Hackathon 中に実装したコードの構成も、最低限のレイヤー分�
 * **UIは欲張らない**：Raycast の List / Form を中心に、導線が見える形に限定
 * **ピッチの筋を守る**：機能追加より「誰の何が楽になるか」を崩さない
 
-
-（ここは当日のメモがあれば、具体例で厚くなる）
-
-## 4. 10/31 Raycast Meetup Japan
+## 4. 10/31 Raycast Meetup Japan #2 with Raycast
 
 イベントページ: [https://raycast.connpass.com/event/370096/](https://raycast.connpass.com/event/370096/)
 
