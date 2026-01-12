@@ -457,4 +457,33 @@ ECS Service
 
 ---
 
+## 参考文献
+
+### ECS 公式ドキュメント
+
+- [Amazon ECS Developer Guide](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/)
+- [Amazon ECS Services](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs_services.html)
+- [Amazon ECS Task Definitions](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definitions.html)
+- [Amazon ECS Deployment Types](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/deployment-types.html)
+- [Amazon ECS Capacity Providers](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/cluster-capacity-providers.html)
+- [Task Networking with awsvpc Mode](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-networking.html)
+- [Amazon ECS Task IAM Roles](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html)
+
+### Kubernetes 公式ドキュメント
+
+- [Kubernetes Documentation](https://kubernetes.io/docs/home/)
+- [Kubernetes Concepts: Workloads](https://kubernetes.io/docs/concepts/workloads/)
+- [Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/)
+- [Pods](https://kubernetes.io/docs/concepts/workloads/pods/)
+- [Kubernetes Scheduler](https://kubernetes.io/docs/concepts/scheduling-eviction/kube-scheduler/)
+- [The Kubernetes API](https://kubernetes.io/docs/concepts/overview/kubernetes-api/)
+
+### アーキテクチャ解説
+
+- [ECS Task Lifecycle](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-lifecycle.html)
+- [Kubernetes Architecture](https://kubernetes.io/docs/concepts/architecture/)
+- [Understanding Kubernetes Objects](https://kubernetes.io/docs/concepts/overview/working-with-objects/)
+
+---
+
 **Happy Container Orchestration!** 🚢
