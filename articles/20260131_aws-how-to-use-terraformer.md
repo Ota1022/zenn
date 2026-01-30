@@ -7,13 +7,13 @@ published: true
 published_at: 2026-01-31 07:00
 ---
 
-業務でTerraformerを使って既存のAWSリソースをTerraform管理下に移行する機会がありました。普段はアプリケーション開発がメインなので、インフラに強いメンバーに諸々助けていただきながら進めたのですが、その過程で学んだことが多かったので備忘として残します。
+業務でTerraformerを使って既存のAWSリソースをTerraform管理下に移行する機会がありました。インフラに詳しいメンバーの知見を借りながら進めたのですが、その過程で学んだことが多かったので備忘として残します。
 
 https://github.com/GoogleCloudPlatform/terraformer
 
 ## 1. Terraformerとは
 
-クラウド上にTerraformで管理されていないリソースが残っていて困ったことはありませんか？ 
+クラウド上にTerraformで管理されていないリソースが残っていて困った経験は多くの人にあると思います。
 
 - Terraform導入前に試験的に作ったリソースがそのまま残っている
 - 手動でコンソールから作成したリソースが把握しきれていない
@@ -23,7 +23,7 @@ https://github.com/GoogleCloudPlatform/terraformer
 
 ### 概要
 
-Terraformerは、既存のクラウドリソースからTerraformのコード（HCL）とstateファイルをまとめて生成するCLIツールです。Google Cloud PlatformチームによってOSSとして公開されています。
+Terraformerは、既存のクラウドリソースからTerraformのコード（HCL）とstateファイルをまとめて生成するCLIツールです。GitHubのGoogleCloudPlatformでOSSとして公開されています。
 
 Terraformには`import`コマンドがありますが、リソースを1つずつstateに取り込み、対応するHCLコードを手動で書く必要があります。大量のリソースを一度にIaC化するには現実的ではありません。Terraformerはこの作業を一括で行い、HCLコードとstateファイルをまとめて生成してくれるツールとして開発されました。
 
@@ -43,11 +43,15 @@ importはIaC化のスタート地点なので、ここからコードを整理�
 
 「IaC化」と「Terraform管理」は似ているようで異なります。IaC化はコードが存在する状態を指しますが、Terraform管理はそのコードで安全に`plan`/`apply`ができ、継続的にインフラを更新・運用できる状態を意味します。
 
-Terraformerでimportしただけの段階はIaC化に近いですが、Terraform管理にはまだ至っていません。差分の解消、不要なリソースの除外、機密情報の分離、state構成の整理などを経て、はじめてTerraformで管理しているといえる状態になります。この記事では、AWSを対象に、Terraformerを使ってTerraform管理に着地させるまでの考え方を扱います。
+Terraformerでimportしただけの段階はIaC化に近いですが、Terraform管理にはまだ至っていません。差分の解消、不要なリソースの除外、機密情報の分離、state構成の整理などを経て、はじめてTerraformで管理しているといえる状態になります。
 
-## 2. 既存AWS環境をTerraformerで扱う前に考えるべきこと
+この記事ではAWSを対象に、Terraformerを使ってTerraform管理に着地させるまでを扱います。
 
-### 既存リソースが抱える"暗黙の前提"
+## 2. Terraformerを扱う前に考えるべきこと
+
+TerraformerはAWSの全サービスに対応しているわけではありません。[対応サービスの一覧](https://github.com/GoogleCloudPlatform/terraformer/blob/master/docs/aws.md)を事前に確認しておくと、対象外のサービスをimportしようとして手戻りになることを避けられます。
+
+### 既存リソースの前提
 
 既存のAWSリソースには、コードには表れない暗黙の前提が多く含まれています。
 
@@ -107,7 +111,7 @@ terraformer import aws \
   --profile=your-profile
 ```
 
-なお私はカンマ区切りで複数サービスを同時にimportしたところ、一部のリソースが取得されない現象に遭遇しました。同様の報告はGitHub上にもあります（[#1886](https://github.com/GoogleCloudPlatform/terraformer/issues/1886)）。原因の特定が難しいので、うまくいかない場合はサービスごとに分けて実行するのが無難です。
+なお私はカンマ区切りで複数サービスを同時にimportしたところ、一部のリソースが取得されない現象に遭遇しました。同様の報告はGitHub上にもありましたが（[#1886](https://github.com/GoogleCloudPlatform/terraformer/issues/1886)）、原因となるリソースの特定が難しいので、うまくいかない場合はサービスごとに分けて実行するのが無難です。
 
 ```bash
 # サービスごとに分けて実行する
@@ -130,7 +134,7 @@ Terraformerが生成するコードには以下のような特徴があり、そ
 - リソース名が`tfer--`プレフィックス付きの自動生成名になる
 - すべての属性がベタ書きされる（デフォルト値と同じ値も明示的に出力される）
 - IDやARNがハードコードされている
-- リソース間の参照が`terraform_remote_state`やIDの直書きになり、`aws_xxx.yyy.id`のような参照になっていない
+- リソース間の参照がつながらず、IDやARNの直書きになりがち
 
 生成されたコードは「どのリソースが存在するか」「どんな属性を持っているか」を把握するための下書きとして扱い、以下の観点で書き直していきます。
 
@@ -179,7 +183,7 @@ Terraformerには`--resources=*`で全サービスを一括importするオプシ
 
 AWSにはリージョンに紐づくリソース（EC2、RDS、ECSなど）と、グローバルなリソース（IAM、Route 53、CloudFrontなど）があります。Terraformerの`--regions`オプションはリージョナルリソースに対してのみ有効で、グローバルリソースはリージョン指定に関係なくimportされます。
 
-Terraformプロジェクト側でもグローバルリソースは`provider`のaliasを使って`us-east-1`を指定するケースが一般的です。import時にこの違いを意識しておかないと、後からprovider設定を変更する手間が発生します。
+また、CloudFront用のACM証明書のように`us-east-1`での作成が必須なリソースもあります。こうしたリソースをTerraformで扱うにはprovider aliasの設計が必要になるため、import時にどのリージョンに属するリソースなのかを意識しておかないと、後からprovider設定を変更する手間が発生します。
 
 リージョンが異なるリソースの管理方法としては、ディレクトリをリージョンごとに分ける（`regions/ap-northeast-1/`、`regions/global/`など）か、同一ディレクトリ内でprovider aliasを使い分けるかの2択になります。プロジェクトの規模が小さければprovider aliasで十分ですが、リソースが増えてきたらディレクトリ分離の方がstateが肥大化しにくくなります。
 
@@ -216,9 +220,9 @@ Terraformerでimportすると特に問題になりやすいのが以下のケー
 
 ### Lambdaのコード管理
 
-Lambdaはデプロイパッケージ（zip）でコードを管理するため、Terraformerでimportしても実行コードそのものはTerraformの管理対象に含まれません。Terraform側で管理するのはLambda関数の設定（メモリ、タイムアウト、環境変数、IAMロールなど）であり、コード本体は別途gitリポジトリで管理するのが一般的です。
+Terraformerのimportで生成されるのは主にLambda関数の設定（メモリ、タイムアウト、環境変数、IAMロールなど）であり、コードの供給（zip化、S3へのアップロード、ビルドパイプラインなど）は別途設計が必要です。
 
-また、zip化やコンパイルのタイミングをどうするかはアプリケーション開発者との取り決めが必要です。CI/CDパイプラインでビルド→zip化→S3アップロード→Terraformでデプロイ、という流れにするのか、開発者がローカルでビルドしたものを使うのかなど、チームの運用に合わせて決めておかないとTerraform側の`source_code_hash`が毎回変わってplanが安定しません。
+チームの運用に合わせてCI/CDパイプラインでビルド→zip化→S3アップロード→Terraformでデプロイという流れにするのか、開発者がローカルでビルドしたものを使うのかなどを決めておかないと、Terraform側の`source_code_hash`が毎回変わってplanが安定しません。
 
 ### Terraformで管理しないという選択肢
 
@@ -230,7 +234,7 @@ Lambdaはデプロイパッケージ（zip）でコードを管理するため�
 
 Terraformerでimportした直後に`terraform plan`を実行すると、大量の差分が表示されて心が折れそうになります。しかし、この差分の多くはインフラが壊れているわけではなく、AWSの内部表現とTerraformの表現が一致していないだけです。
 
-例えば、AWSコンソール上では空文字列で設定されている属性が、Terraform側では`null`として扱われるケースがあります。値としては同じ意味なのに、Terraformは「変更がある」と判定します。こうした差分は実害がなく、applyしても何も変わりません。差分を見たときに「本当にインフラに影響する変更なのか」「単なる表現の違いなのか」を見極めることが重要です。
+例えば、AWSコンソール上では空文字列で設定されている属性が、Terraform側では`null`として扱われるケースがあります。多くは表現の違いだけで、applyしても結果が変わらないことが多いです。ただし、providerの実装によっては表現差に見える差分でもUpdate/Replaceが走ることがあるので、planの出力は精読する必要があります。
 
 ### よくある差分のパターン
 
@@ -246,13 +250,13 @@ Terraformerでimportした直後に`terraform plan`を実行すると、大量�
 
 ### コードの修正で消す
 
-デフォルト値と同じ属性を削除する、順序を揃える、不要な計算属性を消すなど、コード側の調整で解消できる差分はまずこれで対処します。最も正攻法で、差分の大半はこれで片付きます。
+デフォルト値と同じ属性を削除する、順序を揃える、不要な計算属性を消すなど、コード側の調整で解消できる差分はまずこれで対処します。差分の大半はこれで片付きます。
 
 ### ignore_changesで無視する
 
-Terraformの`lifecycle`ブロックにある`ignore_changes`は、指定した属性の変更をTerraformに無視させる設定です。差分を無視するというと問題の先送りに聞こえますが、Terraform外で正当に変更される属性に対して使うのは設計として正しい判断です。
+Terraformの`lifecycle`ブロックにある`ignore_changes`は、指定した属性の変更をTerraformに無視させる設定です。
 
-例えばECSサービスの`desired_count`はAuto Scalingによって動的に変わります。これをTerraformで固定してしまうと、applyするたびにスケーリングがリセットされてしまいます。こうしたケースでは`ignore_changes`を使わない方がむしろ危険です。
+例えばECSサービスの`desired_count`はAuto Scalingによって動的に変わります。これをTerraformで固定してしまうと、applyするたびにスケーリングがリセットされてしまいます。
 
 ```hcl
 resource "aws_ecs_service" "app" {
@@ -273,15 +277,13 @@ resource "aws_ecs_service" "app" {
 
 ### stateの調整
 
-stateはTerraformがどのリソースを管理しているかの記録です。state操作はインフラ自体を変更するわけではなく、Terraformの「見え方」を調整しているだけなので、必要以上に恐れることはありません。
-
-Terraformerからの移行では、以下のようなケースでstate操作が必要になります。
+stateはTerraformがどのリソースを管理しているかの記録です。Terraformerからの移行では、以下のようなケースでstate操作が必要になることがあります。
 
 - **リソース名の変更**：`tfer--`付きの名前を意味のある名前に変えた場合、`state mv`で対応を反映する
 - **管理対象からの除外**：Terraform管理に含めないリソースを`state rm`で外す
 - **構成変更**：リソースを別ファイルやモジュールに移動した場合、stateのアドレスも`state mv`で合わせる
 
-`state mv`と`state rm`はインフラに一切影響しない安全な操作です。操作前に`terraform state pull > backup.tfstate`でバックアップを取り、操作後は`plan`で確認すれば問題ありません。ただし`state push`はリモートのstateを上書きするため、チームで作業している場合は慎重に扱ってください。
+state操作自体はクラウドを直接変更しませんが、コードとの整合が崩れると次の`apply`で破壊的変更につながります。例えば`state rm`した後にコードを消し忘れると、次の`apply`でリソースが再作成されます。`state mv`の移動先を間違えると別リソース扱いになりrecreateが走ることもあります。操作前に`terraform state pull > backup.tfstate`でバックアップを取り、操作後は必ず`plan`で意図しない差分が出ていないか確認してください。
 
 ```bash
 # リソース名の変更
@@ -293,6 +295,6 @@ terraform state rm aws_lambda_function.legacy_function
 
 ## 7. まとめ
 
-Terraformerのimport機能は強力で、コマンド一発で既存リソースのHCLとstateが生成されるため、一見それだけで移行が完了したように見えます。しかし実際にはそこからが本番で、コードの整理、差分の解消、機密情報の分離、state統合といった地道な作業が続きます。
+Terraformerはimportコマンド一発で既存リソースのHCLとstateが生成されるため、それだけで移行が完了したように見えますが実際にはそこからが本番で、コードの整理、差分の解消、機密情報の分離、state統合といった地道な作業が続きます。
 
 大変ではありますが、完了すればインフラの可視性と再現性が大きく向上します。この記事がこれからTerraformerを使おうとしている方の参考になれば幸いです。
