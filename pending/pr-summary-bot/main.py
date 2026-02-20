@@ -43,7 +43,10 @@ def get_pr_info(gh: Github, repo_name: str, pr_number: int) -> dict:
             if len(patch) > MAX_PATCH_CHARS_PER_FILE:
                 patch = patch[:MAX_PATCH_CHARS_PER_FILE] + "\n... (truncated)"
             file_info["patch"] = patch
-            total_patch_chars += len(patch)
+        # patchの有無にかかわらずfile_info全体のシリアライズサイズでキャップを計算する。
+        # patchのみカウントするとバイナリ・リネームファイルが大量にある場合に
+        # キャップが効かずプロンプトが肥大化するため。
+        total_patch_chars += len(json.dumps(file_info, ensure_ascii=False))
         files.append(file_info)
         # 全体合計が大きすぎる場合は打ち切り
         if total_patch_chars > MAX_TOTAL_PATCH_CHARS:
